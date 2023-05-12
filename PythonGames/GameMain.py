@@ -2,7 +2,9 @@ import pygame
 import sys
 import time
 import random
-from pygame.locals import QUIT, KEYUP, KEYDOWN, K_SPACE, K_LEFT, K_RIGHT, K_UP, K_DOWN
+import math
+from pygame.locals import *
+#QUIT, KEYUP, KEYDOWN, K_SPACE, K_LEFT, K_RIGHT, K_UP, K_DOWN
 
 
 pygame.init()
@@ -11,7 +13,7 @@ pygame.display.set_caption("Live Coding Liver")
 s_keymap = []
 s_objects = []
 s_imageList = {}
-
+s_player = None
 
 class GObject:
     def __init__(self, name, colsize, px, py):
@@ -31,12 +33,6 @@ class GObject:
             (self.px - self.rect.centerx,
              self.py - self.rect.centery))
 
-    def onHit(self, attack):
-        pass
-    
-    def onDead(self):
-        pass
-
     def checkWithoutScreen(self):
         scrRect = SURFACE.get_rect()
         if self.px < (scrRect.left - self.rect.centerx):
@@ -53,6 +49,22 @@ class GObject:
 
         return False
 
+
+
+class LifeObject(GObject):
+    def __init__(self, name, colsize, px, py, life):
+        super().__init__(name, colsize, px, py)
+        self.life = life
+    
+    def onDamage(self, attack):
+        self.life -= attack
+        if self.life <= 0:
+            self.onDead()
+    
+    def onDead(self):
+        pass
+
+    
 
 
 
@@ -76,7 +88,7 @@ class Bullet(GObject):
         if hitEnemty:
             # 敵にあたった！！
             self.is_dead = True
-            hitEnemty.onHit(self.attack)
+            hitEnemty.onDamage(self.attack)
     
     # あたった敵を取得
     def getHitEnemy(self):
@@ -97,11 +109,47 @@ class Bullet(GObject):
         return None
 
 
+class EnemyBullet(GObject):
+    def __init__(self, px, py, spdx, spdy):
+        super().__init__("bullet", 8, px, py)
+        self.spdx = spdx
+        self.spdy = spdy
+        self.attack = 1
+        self.image = s_imageList['eBullet']
+        self.rect = self.image.get_rect()
+    
+    def update(self, deltaTime):
+        global s_player
+        self.px += self.spdx * deltaTime
+        self.py += self.spdy * deltaTime
+        # 画面外へ行ったか？
+        if self.checkWithoutScreen():
+            self.is_dead = True
+        # Playerにあたったか？
+        if self.isHitPlayer():
+            # Playerにあたったか？にあたった！！
+            self.is_dead = True
+            s_player.onDamage(self.attack)
+    
+    # ２つの距離の２乗
+    def isHitPlayer(self):
+        # 当たり判定をする
+        global s_player
+        sx = s_player.px - self.px
+        sy = s_player.py - self.py
+        distance2 = sx * sx + sy * sy
+        checksize  = s_player.col_size + self.col_size
+        checksize = checksize * checksize
+        if distance2 < checksize:
+            return True
+        
+        return False
 
 
-class Player(GObject):
+
+class Player(LifeObject):
     def __init__(self, px, py):
-        super().__init__("player", 16, px, py)
+        super().__init__("player", 16, px, py, 100)
         self.image = s_imageList['player'] #pygame.image.load('img/player.png')
         self.rect = self.image.get_rect()
         self.has_shoted = False
@@ -143,19 +191,63 @@ class Player(GObject):
 
 
 
+class BoxParticle(GObject):
+    def __init__(self, px, py):
+        super().__init__("particle", 0, px, py)
+        self.image = None
+        self.rect = None
+        self.timer = 0.5 + random.random() * 0.5
+        self.spdx = (random.random() - 0.5) * 200
+        self.spdy = (random.random() - 0.5) * 200
+        self.width = 5 + random.random() * 30
+        self.height = self.width #5 + random.random() * 100
+
+    
+    def update(self, deltaTime):
+        self.timer -= deltaTime
+        if self.timer <= 0:
+            self.is_dead = True
+        else:
+            self.spdx -= self.spdx / 5 * deltaTime
+            self.spdy -= self.spdy / 5 * deltaTime
+            self.px += self.spdx * deltaTime
+            self.py += self.spdy * deltaTime
+
+    def draw(self):
+        pygame.draw.rect(
+            SURFACE, (255,0,0), 
+            (self.px, self.py,
+             self.width, self.height), 1
+        )
+
+
+
 class CircleEffect(GObject):
     def __init__(self, px, py):
         super().__init__("effect", 0, px, py)
         self.halfsz = 0
         self.time = 3
         self.end_radius = 100
+        # create particle
+        for i in range(20):
+            s_objects.append(
+                BoxParticle(px, py)
+            )
     
     def update(self, deltaTime):
+        # # update particle
+        # for obj in self.particls:
+        #     obj.update(deltaTime)
+        # impact
         self.halfsz += self.end_radius * deltaTime * self.time
         if self.halfsz > self.end_radius:
-            self.is_dead = True
+            self.is_dead = True            
     
     def draw(self):
+        # # update particle
+        # for obj in self.particls:
+        #     obj.draw()
+        # impact
         pygame.draw.circle(
             SURFACE,
             (255,0,0),
@@ -164,7 +256,8 @@ class CircleEffect(GObject):
             1 )
 
 
-class EnemyUFO(GObject):
+
+class EnemyUFO(LifeObject):
     def __init__(self):
         # 水平方向にランダムな位置に出現
         super().__init__(
@@ -172,13 +265,80 @@ class EnemyUFO(GObject):
             20,
             random.random() * 600 + 100,
             -32,
+            3
         )
         # グラフィックはUFO
         self.image = s_imageList['enemyUFO'] #pygame.image.load('img/enemy_64x32_ufo.png')
         self.rect = self.image.get_rect()
         # 速度は下方向に等速移動
         self.spdx = 0
-        self.spdy = 100 + random.random() * 100
+        self.spdy = 100 + random.random() * 1
+        # bullet timer
+        self.bulletTimer = 1.0 + random.random() * 5
+        self.bulletSpeed = 200
+    
+    def update(self, deltaTime):
+        # スピード方向に移動
+        self.px += self.spdx * deltaTime
+        self.py += self.spdy * deltaTime
+        
+        # Bullet Timer
+        self.bulletTimer -= deltaTime
+        if self.bulletTimer <= 0.0:
+            self.bulletTimer = 1.0 + random.random() * 5
+            if self.py < s_player.py:
+                self.shotBulletToPlayer()
+
+        # 画面の下に消えたら自動削除        
+        scrRect = SURFACE.get_rect()
+        if self.py > (scrRect.bottom + self.rect.centery):
+            self.is_dead = True
+        
+    def onDamage(self, attack):
+        super().onDamage(attack)
+        #TODO: ダメージを受けた表現
+        
+    def onDead(self):
+        #TODO： やられエフェクトを出して死亡
+        self.is_dead = True
+        s_objects.append(
+            CircleEffect(self.px, self.py)
+        )
+
+    def shotBulletToPlayer(self):
+        # Calc Speed
+        global s_player
+        spdx = s_player.px - self.px
+        spdy = s_player.py - self.py
+        length = math.sqrt( spdx * spdx + spdy * spdy)
+        spdx = spdx/length * self.bulletSpeed
+        spdy = spdy/length * self.bulletSpeed
+        # Shot Enemy Bulet
+        s_objects.append(
+            EnemyBullet(
+                self.px, self.py,
+                spdx, spdy
+            )
+        )
+
+
+
+class Enemy00(LifeObject):
+    def __init__(self):
+        # 水平方向にランダムな位置に出現
+        super().__init__(
+            "enemy",
+            20,
+            random.random() * 600 + 100,
+            -32,
+            1
+        )
+        # グラフィックはUFO
+        self.image = s_imageList['enemy00'] #pygame.image.load('img/enemy_64x32_ufo.png')
+        self.rect = self.image.get_rect()
+        # 速度は下方向に等速移動
+        self.spdx = 0
+        self.spdy = 150 + random.random() * 200
     
     def update(self, deltaTime):
         # スピード方向に移動
@@ -188,11 +348,12 @@ class EnemyUFO(GObject):
         # 画面の下に消えたら自動削除        
         scrRect = SURFACE.get_rect()
         if self.py > (scrRect.bottom + self.rect.centery):
-            return True
+            self.is_dead = True
         
-    def onHit(self, attack):
-        #TODO: ダメージ計算を入れたい
-        self.onDead()
+    def onDamage(self, attack):
+        super().onDamage(attack)
+        #TODO: ダメージを受けた表現
+        
     
     def onDead(self):
         #TODO： やられエフェクトを出して死亡
@@ -202,15 +363,19 @@ class EnemyUFO(GObject):
         )
 
 
+
 def main():
+    
+    global s_player
     # 初期化
     s_imageList['player'] = pygame.image.load('img/player.png')
     s_imageList['bullet'] = pygame.image.load('img/bullet.png')
     s_imageList['enemyUFO'] = pygame.image.load('img/enemy_64x32_ufo.png')
+    s_imageList['enemy00'] = pygame.image.load('img/enemy00.png')
+    s_imageList['eBullet'] = pygame.image.load('img/e_bullet.png')
     
     
-    
-    player = Player(400, 300)
+    s_player = Player(400, 300)
     preTime = time.perf_counter()
     
     enemyTime = 0
@@ -245,16 +410,26 @@ def main():
         # print("time ", curTime, " delta ", deltaTime)
         
         # 敵を出現させる
+        #TODO：将来的には出現テーブルで対応
         enemyTime += deltaTime
         if enemyTime >= 1.0:
             enemyTime = 0
             s_objects.append(
                 EnemyUFO()
             )
+            s_objects.append(
+                Enemy00()
+            )
+            s_objects.append(
+                Enemy00()
+            )
+            s_objects.append(
+                Enemy00()
+            )
         
         
         # プレイヤーの移動
-        player.update(deltaTime)
+        s_player.update(deltaTime)
 
 
         killList = []
@@ -279,7 +454,7 @@ def main():
 
         SURFACE.fill((255,255,255))
         # プレイヤーの描画
-        player.draw()
+        s_player.draw()
 
         # オブジェクトの描画
         for obj in s_objects:
