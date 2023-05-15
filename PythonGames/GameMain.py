@@ -4,7 +4,6 @@ import time
 import random
 import math
 from pygame.locals import *
-#QUIT, KEYUP, KEYDOWN, K_SPACE, K_LEFT, K_RIGHT, K_UP, K_DOWN
 
 
 pygame.init()
@@ -50,7 +49,6 @@ class GObject:
         return False
 
 
-
 class LifeObject(GObject):
     def __init__(self, name, colsize, px, py, life):
         super().__init__(name, colsize, px, py)
@@ -65,17 +63,21 @@ class LifeObject(GObject):
         pass
 
     
-
-
-
 class Bullet(GObject):
     def __init__(self, px, py, spdx, spdy):
         super().__init__("bullet", 8, px, py)
         self.spdx = spdx
         self.spdy = spdy
         self.attack = 1
-        self.image = s_imageList['bullet'] # pygame.image.load('img/bullet.png')
-        self.rect = self.image.get_rect()
+        self.image = s_imageList['miscellaneous'] # pygame.image.load('img/bullet.png')
+        self.rect = Rect(12*8, 7*8, 8, 8)
+        self.scale = 4
+        self.imgRect = Rect(
+                self.rect.left * self.scale,
+                self.rect.top * self.scale,
+                self.rect.width * self.scale,
+                self.rect.height * self.scale
+                 )
     
     def update(self, deltaTime):
         self.px += self.spdx * deltaTime
@@ -89,6 +91,15 @@ class Bullet(GObject):
             # 敵にあたった！！
             self.is_dead = True
             hitEnemty.onDamage(self.attack)
+    
+    def draw(self):
+        SURFACE.blit(
+            pygame.transform.scale_by(
+                self.image, self.scale),
+            (self.px - self.rect.width * 0.5,
+             self.py - self.rect.height * 0.5),
+            self.imgRect)
+
     
     # あたった敵を取得
     def getHitEnemy(self):
@@ -146,25 +157,48 @@ class EnemyBullet(GObject):
         return False
 
 
-
 class Player(LifeObject):
+    ANIM_RIGHT = 0
+    ANIM_MIDDLE = 1
+    ANIM_LEFT = 2
+    
     def __init__(self, px, py):
         super().__init__("player", 16, px, py, 100)
-        self.image = s_imageList['player'] #pygame.image.load('img/player.png')
-        self.rect = self.image.get_rect()
+        self.image = s_imageList['ships'] #pygame.image.load('img/player.png')
+        self.rect = Rect(0,0,8,8)
         self.has_shoted = False
+        self.speed = 100
+        self.scale = 4
+        self.cellSize = 8 * self.scale
+        self.animList = []
+        self.animList.append(Rect(0* self.scale, 0, self.cellSize, self.cellSize))
+        self.animList.append(Rect(8* self.scale, 0, self.cellSize, self.cellSize))
+        self.animList.append(Rect(16* self.scale, 0, self.cellSize, self.cellSize))
+        self.imgRect = self.animList[self.ANIM_MIDDLE]
+        # バーニア
+        self.animIndexBaner = 0
+        self.animTimerBaner = 0
+        self.imgBaner = s_imageList['miscellaneous']
+        self.animListBaner = []
+        self.animListBaner.append(Rect(5 * 8 * self.scale, 1 * 8 * self.scale, self.cellSize, self.cellSize))
+        self.animListBaner.append(Rect(6 * 8 * self.scale, 1 * 8 * self.scale, self.cellSize, self.cellSize))
+        self.animListBaner.append(Rect(7 * 8 * self.scale, 1 * 8 * self.scale, self.cellSize, self.cellSize))
+        self.animListBaner.append(Rect(8 * 8 * self.scale, 1 * 8 * self.scale, self.cellSize, self.cellSize))
+        self.imgRectBaner = self.animListBaner[0]
     
     def update(self, deltaTime):
         global s_keymap
         scrRect = SURFACE.get_rect()
-        self.speed = 200
         
+        self.imgRect = self.animList[self.ANIM_MIDDLE]
         if K_LEFT in s_keymap:
+            self.imgRect = self.animList[self.ANIM_LEFT]
             self.px -= self.speed * deltaTime
             if self.px < (scrRect.left + self.rect.centerx):
                 self.px = scrRect.left + self.rect.centerx
             
         if K_RIGHT in s_keymap:
+            self.imgRect = self.animList[self.ANIM_RIGHT]
             self.px += self.speed * deltaTime
             if self.px > (scrRect.right - self.rect.centerx):
                 self.px = scrRect.right - self.rect.centerx
@@ -189,6 +223,34 @@ class Player(LifeObject):
         else:
             self.has_shoted = False
 
+        # バーニア
+        self.imgRectBaner = self.animListBaner[self.animIndexBaner]
+        self.animTimerBaner += deltaTime
+        if self.animTimerBaner > 0.1:
+            # animation
+            self.animTimerBaner = 0
+            self.animIndexBaner += 1
+            if self.animIndexBaner >= len(self.animListBaner):
+                self.animIndexBaner = 0
+
+
+    def draw(self):
+ 
+        SURFACE.blit(
+            pygame.transform.scale_by(
+                self.image, self.scale),
+                (self.px - self.rect.width * 0.5,
+                self.py - self.rect.height * 0.5),
+                self.imgRect
+        )
+    
+        SURFACE.blit(
+            pygame.transform.scale_by(
+                self.imgBaner, self.scale),
+                (self.px - self.rect.width * 0.5,
+                self.py - self.rect.height * 0.5 + 8 * self.scale),
+                self.imgRectBaner
+        )
 
 
 class BoxParticle(GObject):
@@ -219,7 +281,6 @@ class BoxParticle(GObject):
             (self.px, self.py,
              self.width, self.height), 1
         )
-
 
 
 class CircleEffect(GObject):
@@ -254,7 +315,6 @@ class CircleEffect(GObject):
             (self.px, self.py),
             self.halfsz,
             1 )
-
 
 
 class EnemyUFO(LifeObject):
@@ -322,7 +382,6 @@ class EnemyUFO(LifeObject):
         )
 
 
-
 class Enemy00(LifeObject):
     def __init__(self):
         # 水平方向にランダムな位置に出現
@@ -368,14 +427,18 @@ def main():
     
     global s_player
     # 初期化
-    s_imageList['player'] = pygame.image.load('img/player.png')
-    s_imageList['bullet'] = pygame.image.load('img/bullet.png')
+    s_imageList['ships'] = pygame.image.load('img/assets/SpaceShooterAssetPack_Ships.png')
+    s_imageList['miscellaneous'] = pygame.image.load('img/assets/SpaceShooterAssetPack_Miscellaneous.png')
     s_imageList['enemyUFO'] = pygame.image.load('img/enemy_64x32_ufo.png')
     s_imageList['enemy00'] = pygame.image.load('img/enemy00.png')
     s_imageList['eBullet'] = pygame.image.load('img/e_bullet.png')
     
     
+    
+    # プレイヤーオブジェクトの生成
     s_player = Player(400, 300)
+    
+    # calc for deltaTime
     preTime = time.perf_counter()
     
     enemyTime = 0
@@ -407,7 +470,6 @@ def main():
         curTime = time.perf_counter()
         deltaTime = curTime - preTime
         preTime = curTime
-        # print("time ", curTime, " delta ", deltaTime)
         
         # 敵を出現させる
         #TODO：将来的には出現テーブルで対応
@@ -452,7 +514,7 @@ def main():
         # 画面描画
         ###############
 
-        SURFACE.fill((255,255,255))
+        SURFACE.fill((0, 0, 0))
         # プレイヤーの描画
         s_player.draw()
 

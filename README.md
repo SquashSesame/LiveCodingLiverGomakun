@@ -6,14 +6,22 @@
 
 
 # 環境
-## PythonGames
+## ■ PythonGames
 
 - Python 3.7
 - pygame [https://www.pygame.org/news]
   > pip install pygame
 
-## コーディングツール
+## ■ コーディングツール
 - Visual Studio Code [https://code.visualstudio.com/download]
 
+
+## ■ グラフィックデータ
+- 下記URLより寄付型のフリーリソースを取得してください
+ https://gvituri.itch.io/space-shooter
+ SpaceShooterAssetPack.zip
+
+- 取得したら、下記のフォルダにPNGファイルをコピーしてください
+ img/assets/
 
 
