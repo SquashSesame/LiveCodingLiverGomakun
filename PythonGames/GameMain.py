@@ -14,6 +14,10 @@ s_objects = []
 s_imageList = {}
 s_player = None
 
+GAMESTATUS_GAME = 0
+GAMESTATUS_GAMEOVER = 1
+s_gameStatus = GAMESTATUS_GAME
+
 class GObject:
     def __init__(self, name, colsize, px, py):
         self.name = name
@@ -21,31 +25,54 @@ class GObject:
         self.px = px
         self.py = py
         self.is_dead = False
-        # self.image = pygame.image
-        # self.rect = 
+        self.scale = 4
+        self.cellSize = 8 * self.scale
+        self.image = None
+        self.rect = None
     
     def update(self, deltaTime):
         pass
 
     def draw(self):
-        SURFACE.blit(self.image,
-            (self.px - self.rect.centerx,
-             self.py - self.rect.centery))
+        if self.image:
+            SURFACE.blit(self.image,
+                (self.px - self.rect.centerx,
+                self.py - self.rect.centery))
 
     def checkWithoutScreen(self):
         scrRect = SURFACE.get_rect()
         if self.px < (scrRect.left - self.rect.centerx):
             return True
-        
         if self.px > (scrRect.right + self.rect.centerx):
             return True
-        
         if self.py < (scrRect.top - self.rect.centery):
             return True
-        
         if self.py > (scrRect.bottom + self.rect.centery):
             return True
+        return False
 
+    def makeAnimList(self, animPtn):
+        animList = []
+        for ptn in animPtn:
+            animList.append(
+                Rect(
+                    ptn[0] * self.cellSize,
+                    ptn[1] * self.cellSize,
+                    self.cellSize,
+                    self.cellSize))
+        return animList
+
+    # ２つの距離の２乗
+    def isHitPlayer(self):
+        # 当たり判定をする
+        global s_player
+        sx = s_player.px - self.px
+        sy = s_player.py - self.py
+        distance2 = sx * sx + sy * sy
+        checksize  = s_player.col_size + self.col_size
+        checksize = checksize * checksize
+        if distance2 < checksize:
+            return True
         return False
 
 
@@ -72,12 +99,8 @@ class Bullet(GObject):
         self.image = s_imageList['miscellaneous'] # pygame.image.load('img/bullet.png')
         self.rect = Rect(12*8, 7*8, 8, 8)
         self.scale = 4
-        self.imgRect = Rect(
-                self.rect.left * self.scale,
-                self.rect.top * self.scale,
-                self.rect.width * self.scale,
-                self.rect.height * self.scale
-                 )
+        self.animList = self.makeAnimList([[12,7]])
+        self.rect = self.imgRect = self.animList[0]
     
     def update(self, deltaTime):
         self.px += self.spdx * deltaTime
@@ -96,8 +119,8 @@ class Bullet(GObject):
         SURFACE.blit(
             pygame.transform.scale_by(
                 self.image, self.scale),
-            (self.px - self.rect.width * 0.5,
-             self.py - self.rect.height * 0.5),
+            (self.px - self.imgRect.width * 0.5,
+             self.py - self.imgRect.height * 0.5),
             self.imgRect)
 
     
@@ -142,20 +165,6 @@ class EnemyBullet(GObject):
             self.is_dead = True
             s_player.onDamage(self.attack)
     
-    # ２つの距離の２乗
-    def isHitPlayer(self):
-        # 当たり判定をする
-        global s_player
-        sx = s_player.px - self.px
-        sy = s_player.py - self.py
-        distance2 = sx * sx + sy * sy
-        checksize  = s_player.col_size + self.col_size
-        checksize = checksize * checksize
-        if distance2 < checksize:
-            return True
-        
-        return False
-
 
 class Player(LifeObject):
     ANIM_RIGHT = 0
@@ -163,30 +172,26 @@ class Player(LifeObject):
     ANIM_LEFT = 2
     
     def __init__(self, px, py):
-        super().__init__("player", 16, px, py, 100)
+        super().__init__("player", 16, px, py, 10)
         self.image = s_imageList['ships'] #pygame.image.load('img/player.png')
         self.rect = Rect(0,0,8,8)
         self.has_shoted = False
+        self.is_muteki = False
+        self.timerMuteki = 0
         self.speed = 100
-        self.scale = 4
-        self.cellSize = 8 * self.scale
-        self.animList = []
-        self.animList.append(Rect(0* self.scale, 0, self.cellSize, self.cellSize))
-        self.animList.append(Rect(8* self.scale, 0, self.cellSize, self.cellSize))
-        self.animList.append(Rect(16* self.scale, 0, self.cellSize, self.cellSize))
+        self.animList = self.makeAnimList([[0,0],[1,0],[2,0]])
         self.imgRect = self.animList[self.ANIM_MIDDLE]
         # バーニア
         self.animIndexBaner = 0
         self.animTimerBaner = 0
         self.imgBaner = s_imageList['miscellaneous']
-        self.animListBaner = []
-        self.animListBaner.append(Rect(5 * 8 * self.scale, 1 * 8 * self.scale, self.cellSize, self.cellSize))
-        self.animListBaner.append(Rect(6 * 8 * self.scale, 1 * 8 * self.scale, self.cellSize, self.cellSize))
-        self.animListBaner.append(Rect(7 * 8 * self.scale, 1 * 8 * self.scale, self.cellSize, self.cellSize))
-        self.animListBaner.append(Rect(8 * 8 * self.scale, 1 * 8 * self.scale, self.cellSize, self.cellSize))
+        self.animListBaner = self.makeAnimList([[5,1],[6,1],[7,1],[8,1]])
         self.imgRectBaner = self.animListBaner[0]
     
     def update(self, deltaTime):
+        if self.is_dead:
+            return
+
         global s_keymap
         scrRect = SURFACE.get_rect()
         
@@ -232,25 +237,66 @@ class Player(LifeObject):
             self.animIndexBaner += 1
             if self.animIndexBaner >= len(self.animListBaner):
                 self.animIndexBaner = 0
+        
+        # 無敵時間
+        if self.is_muteki:
+            self.timerMuteki += deltaTime
+            if self.timerMuteki > 1.0:
+                self.timerMuteki = 0
+                self.is_muteki = False
 
 
     def draw(self):
- 
+        if self.is_dead:
+            return
+        
         SURFACE.blit(
             pygame.transform.scale_by(
                 self.image, self.scale),
-                (self.px - self.rect.width * 0.5,
-                self.py - self.rect.height * 0.5),
+                (self.px - self.imgRect.width * 0.5,
+                self.py - self.imgRect.height * 0.5),
                 self.imgRect
         )
-    
         SURFACE.blit(
             pygame.transform.scale_by(
                 self.imgBaner, self.scale),
-                (self.px - self.rect.width * 0.5,
-                self.py - self.rect.height * 0.5 + 8 * self.scale),
+                (self.px - self.imgRectBaner.width * 0.5,
+                self.py - self.imgRectBaner.height * 0.5 + 8 * self.scale),
                 self.imgRectBaner
         )
+        
+    def onDamage(self, attack):
+        if not self.is_muteki:
+            self.is_muteki = True
+            super().onDamage(attack)
+            # 減った体力を表示に反映
+            s_objects.append(
+                CircleEffect(self.px, self.py)
+            )
+
+    def onDead(self):
+        global s_gameStatus
+        self.is_dead = True
+        s_objects.append(
+            CircleEffect(self.px, self.py)
+        )
+        s_gameStatus = GAMESTATUS_GAMEOVER
+        
+
+class LifeGage(GObject):
+    def __init__(self):
+        super().__init__("lifegage", 0, 32, 32)
+        self.image = s_imageList['miscellaneous'] #pygame.image.load('img/player.png')
+        self.animList = self.makeAnimList([[0,4]])
+        self.imgRect = self.animList[0]
+
+    def draw(self):
+        for hp in range(s_player.life):        
+            SURFACE.blit(
+                pygame.transform.scale_by(
+                    self.image, self.scale),
+                (self.px + hp * self.cellSize, self.py),
+                self.imgRect)
 
 
 class BoxParticle(GObject):
@@ -328,8 +374,9 @@ class EnemyUFO(LifeObject):
             3
         )
         # グラフィックはUFO
-        self.image = s_imageList['enemyUFO'] #pygame.image.load('img/enemy_64x32_ufo.png')
-        self.rect = self.image.get_rect()
+        self.image = s_imageList['ships']
+        self.animList = self.makeAnimList([[9,0]])
+        self.rect = self.imgRect = self.animList[0]
         # 速度は下方向に等速移動
         self.spdx = 0
         self.spdy = 100 + random.random() * 1
@@ -348,11 +395,22 @@ class EnemyUFO(LifeObject):
             self.bulletTimer = 1.0 + random.random() * 5
             if self.py < s_player.py:
                 self.shotBulletToPlayer()
+        # Player HIT?
+        if self.isHitPlayer():
+            s_player.onDamage(1)
 
         # 画面の下に消えたら自動削除        
         scrRect = SURFACE.get_rect()
         if self.py > (scrRect.bottom + self.rect.centery):
             self.is_dead = True
+        
+    def draw(self):
+        SURFACE.blit(
+            pygame.transform.scale_by(
+                self.image, self.scale),
+            (self.px - self.imgRect.width * 0.5,
+             self.py - self.imgRect.height * 0.5),
+            self.imgRect)
         
     def onDamage(self, attack):
         super().onDamage(attack)
@@ -393,8 +451,9 @@ class Enemy00(LifeObject):
             1
         )
         # グラフィックはUFO
-        self.image = s_imageList['enemy00'] #pygame.image.load('img/enemy_64x32_ufo.png')
-        self.rect = self.image.get_rect()
+        self.image = s_imageList['ships']
+        self.animList = self.makeAnimList([[4,0]])
+        self.rect = self.imgRect = self.animList[0]
         # 速度は下方向に等速移動
         self.spdx = 0
         self.spdy = 150 + random.random() * 200
@@ -403,12 +462,22 @@ class Enemy00(LifeObject):
         # スピード方向に移動
         self.px += self.spdx * deltaTime
         self.py += self.spdy * deltaTime
-
+        # Player HIT?
+        if self.isHitPlayer():
+            s_player.onDamage(1)
         # 画面の下に消えたら自動削除        
         scrRect = SURFACE.get_rect()
         if self.py > (scrRect.bottom + self.rect.centery):
             self.is_dead = True
         
+    def draw(self):
+        SURFACE.blit(
+            pygame.transform.scale_by(
+                self.image, self.scale),
+            (self.px - self.imgRect.width * 0.5,
+             self.py - self.imgRect.height * 0.5),
+            self.imgRect)
+
     def onDamage(self, attack):
         super().onDamage(attack)
         #TODO: ダメージを受けた表現
@@ -433,16 +502,18 @@ def main():
     s_imageList['enemy00'] = pygame.image.load('img/enemy00.png')
     s_imageList['eBullet'] = pygame.image.load('img/e_bullet.png')
     
-    
-    
     # プレイヤーオブジェクトの生成
     s_player = Player(400, 300)
+    s_lifeGage = LifeGage()
     
     # calc for deltaTime
     preTime = time.perf_counter()
     
     enemyTime = 0
     
+    # Font
+    textFont = pygame.font.SysFont('MS Gothic', 80)
+    textGAMEOVER = textFont.render("GAME OVER", True, (255,0,0))
     
     ###################
     # メインループ
@@ -492,6 +563,7 @@ def main():
         
         # プレイヤーの移動
         s_player.update(deltaTime)
+        s_lifeGage.update(deltaTime)
 
 
         killList = []
@@ -515,12 +587,19 @@ def main():
         ###############
 
         SURFACE.fill((0, 0, 0))
-        # プレイヤーの描画
-        s_player.draw()
 
         # オブジェクトの描画
         for obj in s_objects:
             obj.draw()
+        
+        # プレイヤーの描画
+        s_player.draw()
+        s_lifeGage.draw()
+        
+        # GAGAME OVER?
+        if s_gameStatus == GAMESTATUS_GAMEOVER:
+            SURFACE.blit(textGAMEOVER,
+                (400 - textGAMEOVER.get_rect().width * 0.5, 300))
         
         # ウィンドウ出す
         pygame.display.update()    
