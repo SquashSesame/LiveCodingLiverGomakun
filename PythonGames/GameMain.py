@@ -491,29 +491,186 @@ class Enemy00(LifeObject):
         )
 
 
+class BackStars(GObject):
+    def __init__(self):
+        # 水平方向にランダムな位置に出現
+        super().__init__(
+            "back",
+            0,
+            random.random() * 600 + 100,
+            -32
+        )
+        self.rect = Rect(0,0,8,8)
+        self.color = Color((
+            random.random() * 230 + 20,
+            random.random() * 230 + 20,
+            random.random() * 230 + 20)
+        )
+        # 速度は下方向に等速移動
+        self.spdx = 0
+        self.spdy = 100 + random.random() * 400
+    
+    def update(self, deltaTime):
+        # スピード方向に移動
+        self.px += self.spdx * deltaTime
+        self.py += self.spdy * deltaTime
+        # 画面の下に消えたら自動削除        
+        scrRect = SURFACE.get_rect()
+        if self.py > (scrRect.bottom + self.rect.centery):
+            self.is_dead = True
+        
+    def draw(self):
+        pygame.draw.lines(
+            SURFACE,
+            self.color, False, 
+            ([self.px, self.py-4],
+             [self.px, self.py+4]) )
+
+
+class Scene:
+    def getSceneStatus(self):
+        # -1 ... シーン実行中
+        # 0〜 ... シーン終了
+        return -1
+    
+    def nextScene(self):
+        return None
+    
+    def update(self, deltaTime):
+        pass
+    
+    def draw(self):
+        pass
+
+class GameScene(Scene):
+    def __init__(self):
+        global s_imageList, s_player, s_lifeGage, s_objects, s_gameStatus
+        # オブジェクトの初期化
+        s_objects.clear()
+        s_gameStatus = GAMESTATUS_GAME
+        # プレイヤーオブジェクトの生成
+        s_player = Player(400, 300)
+        s_lifeGage = LifeGage()
+        # Font
+        self.textFont = pygame.font.SysFont('MS Gothic', 80)
+        self.textGAMEOVER = self.textFont.render("GAME OVER", True, (255,0,0))
+        # 敵を出現させるタイマー
+        self.enemyTime = random.random() + 0.5
+        self.status = -1
+        # Back Stars
+        self.timerStar = random.random() * 0.1
+        
+    def getSceneStatus(self):
+        return self.status
+
+    def nextScene(self):
+        return TitleScene()
+
+    def update(self, deltaTime):
+        # 敵を出現させる
+        #TODO：将来的には出現テーブルで対応
+        self.enemyTime -= deltaTime
+        if self.enemyTime <= 0.0:
+            self.enemyTime = random.random() + 0.5
+            s_objects.append(
+                EnemyUFO()
+            )
+            s_objects.append(
+                Enemy00()
+            )
+            s_objects.append(
+                Enemy00()
+            )
+            s_objects.append(
+                Enemy00()
+            )
+        # back star
+        self.timerStar -= deltaTime
+        if self.timerStar <= 0.0:
+            self.timerStar = random.random() * 0.1
+            s_objects.append(
+                BackStars()
+            )
+            s_objects.append(
+                BackStars()
+            )
+        # プレイヤーの移動
+        s_player.update(deltaTime)
+        s_lifeGage.update(deltaTime)
+        # ゲームオーバー
+        if s_gameStatus == GAMESTATUS_GAMEOVER:
+            if K_SPACE in s_keymap:
+                # end of game scene
+                self.status = 0
+
+    def draw(self):
+        # プレイヤーの描画
+        s_player.draw()
+        s_lifeGage.draw()
+        
+        # GAGAME OVER?
+        if s_gameStatus == GAMESTATUS_GAMEOVER:
+            SURFACE.blit(self.textGAMEOVER,
+                (400 - self.textGAMEOVER.get_rect().width * 0.5, 200))
+        
+
+class TitleScene(Scene):
+    def __init__(self):
+        global s_imageList, s_player, s_lifeGage, s_objects
+        # オブジェクトの初期化
+        s_objects.clear()
+        # Font
+        self.textFont80 = pygame.font.SysFont('MS Gothic', 80)
+        self.textTitle = self.textFont80.render("17Live ATTACK", True, (255,255,255))
+        self.textFont40 = pygame.font.SysFont('MS Gothic', 40)
+        self.textSTART = self.textFont40.render("PRESS SPACE KEY TO START", True, (255,255,255))
+        self.status = -1
+        # Back Stars
+        self.timerStar = random.random() * 0.1
+
+    def getSceneStatus(self):
+        return self.status
+
+    def nextScene(self):
+        return GameScene()
+
+    def update(self, deltaTime):
+        # back star
+        self.timerStar -= deltaTime
+        if self.timerStar <= 0.0:
+            self.timerStar = random.random() * 0.1
+            s_objects.append(
+                BackStars()
+            )
+            s_objects.append(
+                BackStars()
+            )
+        # waiting key
+        if K_SPACE in s_keymap:
+            self.status = 0
+
+    def draw(self):
+        SURFACE.blit(self.textTitle,
+            (400 - self.textTitle.get_rect().width * 0.5, 200))
+
+        SURFACE.blit(self.textSTART,
+            (400 - self.textSTART.get_rect().width * 0.5, 400))
 
 def main():
     
     global s_player
-    # 初期化
+    
     s_imageList['ships'] = pygame.image.load('img/assets/SpaceShooterAssetPack_Ships.png')
     s_imageList['miscellaneous'] = pygame.image.load('img/assets/SpaceShooterAssetPack_Miscellaneous.png')
     s_imageList['enemyUFO'] = pygame.image.load('img/enemy_64x32_ufo.png')
     s_imageList['enemy00'] = pygame.image.load('img/enemy00.png')
     s_imageList['eBullet'] = pygame.image.load('img/e_bullet.png')
-    
-    # プレイヤーオブジェクトの生成
-    s_player = Player(400, 300)
-    s_lifeGage = LifeGage()
-    
+
     # calc for deltaTime
     preTime = time.perf_counter()
+        
+    curScene = TitleScene()
     
-    enemyTime = 0
-    
-    # Font
-    textFont = pygame.font.SysFont('MS Gothic', 80)
-    textGAMEOVER = textFont.render("GAME OVER", True, (255,0,0))
     
     ###################
     # メインループ
@@ -542,29 +699,8 @@ def main():
         deltaTime = curTime - preTime
         preTime = curTime
         
-        # 敵を出現させる
-        #TODO：将来的には出現テーブルで対応
-        enemyTime += deltaTime
-        if enemyTime >= 1.0:
-            enemyTime = 0
-            s_objects.append(
-                EnemyUFO()
-            )
-            s_objects.append(
-                Enemy00()
-            )
-            s_objects.append(
-                Enemy00()
-            )
-            s_objects.append(
-                Enemy00()
-            )
-        
-        
-        # プレイヤーの移動
-        s_player.update(deltaTime)
-        s_lifeGage.update(deltaTime)
-
+        # Scene update
+        curScene.update(deltaTime)
 
         killList = []
 
@@ -592,14 +728,12 @@ def main():
         for obj in s_objects:
             obj.draw()
         
-        # プレイヤーの描画
-        s_player.draw()
-        s_lifeGage.draw()
+        # Scene draw
+        curScene.draw()
         
-        # GAGAME OVER?
-        if s_gameStatus == GAMESTATUS_GAMEOVER:
-            SURFACE.blit(textGAMEOVER,
-                (400 - textGAMEOVER.get_rect().width * 0.5, 300))
+        # Switch Scne
+        if curScene.getSceneStatus() >= 0:
+            curScene = curScene.nextScene()
         
         # ウィンドウ出す
         pygame.display.update()    
