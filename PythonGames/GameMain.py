@@ -13,10 +13,12 @@ s_keymap = []
 s_objects = []
 s_imageList = {}
 s_player = None
+s_fader = None
 
 GAMESTATUS_GAME = 0
 GAMESTATUS_GAMEOVER = 1
 s_gameStatus = GAMESTATUS_GAME
+
 
 class GObject:
     def __init__(self, name, colsize, px, py):
@@ -66,13 +68,14 @@ class GObject:
     def isHitPlayer(self):
         # 当たり判定をする
         global s_player
-        sx = s_player.px - self.px
-        sy = s_player.py - self.py
-        distance2 = sx * sx + sy * sy
-        checksize  = s_player.col_size + self.col_size
-        checksize = checksize * checksize
-        if distance2 < checksize:
-            return True
+        if not s_player.is_dead:
+            sx = s_player.px - self.px
+            sy = s_player.py - self.py
+            distance2 = sx * sx + sy * sy
+            checksize  = s_player.col_size + self.col_size
+            checksize = checksize * checksize
+            if distance2 < checksize:
+                return True
         return False
 
 
@@ -544,7 +547,7 @@ class Scene:
 
 class GameScene(Scene):
     def __init__(self):
-        global s_imageList, s_player, s_lifeGage, s_objects, s_gameStatus
+        global s_imageList, s_player, s_lifeGage, s_objects, s_gameStatus, s_fader
         # オブジェクトの初期化
         s_objects.clear()
         s_gameStatus = GAMESTATUS_GAME
@@ -559,6 +562,11 @@ class GameScene(Scene):
         self.status = -1
         # Back Stars
         self.timerStar = random.random() * 0.1
+        # fade in
+        s_fader.fadeIn(0.5, None)
+        
+    # def cbFuncNon(self):
+    #     print("pass")
         
     def getSceneStatus(self):
         return self.status
@@ -601,7 +609,11 @@ class GameScene(Scene):
         if s_gameStatus == GAMESTATUS_GAMEOVER:
             if K_SPACE in s_keymap:
                 # end of game scene
-                self.status = 0
+                # fade out
+                s_fader.fadeOut(0.5, self.cbFadeEnd)
+                
+    def cbFadeEnd(self):
+        self.status = 0
 
     def draw(self):
         # プレイヤーの描画
@@ -616,7 +628,7 @@ class GameScene(Scene):
 
 class TitleScene(Scene):
     def __init__(self):
-        global s_imageList, s_player, s_lifeGage, s_objects
+        global s_imageList, s_player, s_lifeGage, s_objects, s_fader
         # オブジェクトの初期化
         s_objects.clear()
         # Font
@@ -627,6 +639,11 @@ class TitleScene(Scene):
         self.status = -1
         # Back Stars
         self.timerStar = random.random() * 0.1
+        # fade in
+        s_fader.fadeIn(0.5, None)
+
+    # def cbFuncNon(self):
+    #     print("pass")
 
     def getSceneStatus(self):
         return self.status
@@ -647,7 +664,12 @@ class TitleScene(Scene):
             )
         # waiting key
         if K_SPACE in s_keymap:
-            self.status = 0
+            if not s_fader.is_fading:
+                s_fader.fadeOut(0.5, self.cbFadeEnd)
+
+    def cbFadeEnd(self):
+        self.status = 0
+        
 
     def draw(self):
         SURFACE.blit(self.textTitle,
@@ -656,9 +678,81 @@ class TitleScene(Scene):
         SURFACE.blit(self.textSTART,
             (400 - self.textSTART.get_rect().width * 0.5, 400))
 
+
+class Fader(GObject):
+    def __init__(self):
+        super().__init__("fader", 0, 0, 0)
+        self.image = None
+        self.rect = SURFACE.get_rect()
+        self.is_fading = False
+        self.is_end = False
+        self.alpha = 0.0
+        self.src_alpha = 0.0
+        self.trg_alpha = 0.0
+        self.timer = 0
+        self.fadeTime = 0.5
+        self.img_alpha = pygame.Surface(self.rect.size, pygame.SRCALPHA)
+        # colorKey = self.img_alpha.get_at((0,0))
+        self.img_alpha.set_colorkey((0,0,0), pygame.RLEACCEL)
+        # self.img_alpha.fill((0,0,0), self.img_alpha.get_rect())
+        self.funcEnd = None
+    
+    def fadeIn(self, fadeTime, funcEnd):
+        self.src_alpha = self.alpha
+        self.trg_alpha = 0.0
+        self.fadeTime = fadeTime
+        self.timer = 0
+        self.is_fading = True
+        self.is_end = False
+        self.funcEnd = funcEnd
+
+    def fadeOut(self, fadeTime, funcEnd):
+        self.src_alpha = self.alpha
+        self.trg_alpha = 255
+        self.fadeTime = fadeTime
+        self.timer = 0
+        self.is_fading = True
+        self.is_end = False
+        self.funcEnd = funcEnd
+
+    def update(self, deltaTime):
+        if self.is_fading:
+            # fade Timer
+            self.timer += deltaTime
+            if self.timer >= self.fadeTime:
+                # fade End
+                self.timer = self.fadeTime
+                self.is_end = True
+                self.is_fading = False
+                # call func End
+                if self.funcEnd:
+                    self.funcEnd()
+            # fade Alpha
+            curTime = self.timer / self.fadeTime
+            self.alpha = self.src_alpha + (self.trg_alpha - self.src_alpha) * curTime
+
+    def draw(self):
+        self.img_alpha.fill((0,0,0,self.alpha))
+        # self.img_alpha.fill(
+        #     (255,0,0,self.alpha), self.rect, special_flags=pygame.BLEND_RGBA_MULT)
+        # self.img_alpha.set_alpha(self.alpha)s
+        SURFACE.blit(self.img_alpha, (0,0))
+        # pygame.draw.rect(self.img_alpha, (0,0,0,self.alpha), self.img_alpha.get_rect())
+                
+        # pygame.draw.rect(SURFACE, 
+        #         (0,0,0),
+        #         Rect(
+        #             400 - self.rect.width * self.alpha * 0.5,
+        #             300 - self.rect.height * self.alpha * 0.5,
+        #             self.rect.width * self.alpha,
+        #             self.rect.height * self.alpha
+        #             )
+        #         )
+
+
 def main():
     
-    global s_player
+    global s_player, s_fader
     
     s_imageList['ships'] = pygame.image.load('img/assets/SpaceShooterAssetPack_Ships.png')
     s_imageList['miscellaneous'] = pygame.image.load('img/assets/SpaceShooterAssetPack_Miscellaneous.png')
@@ -666,12 +760,14 @@ def main():
     s_imageList['enemy00'] = pygame.image.load('img/enemy00.png')
     s_imageList['eBullet'] = pygame.image.load('img/e_bullet.png')
 
+    # Fader
+    s_fader = Fader()
+
     # calc for deltaTime
     preTime = time.perf_counter()
         
     curScene = TitleScene()
-    
-    
+        
     ###################
     # メインループ
     ###################
@@ -701,6 +797,9 @@ def main():
         
         # Scene update
         curScene.update(deltaTime)
+        
+        # Fader update
+        s_fader.update(deltaTime)
 
         killList = []
 
@@ -730,6 +829,9 @@ def main():
         
         # Scene draw
         curScene.draw()
+        
+        # Fader draw
+        s_fader.draw()
         
         # Switch Scne
         if curScene.getSceneStatus() >= 0:
