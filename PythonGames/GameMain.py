@@ -14,11 +14,36 @@ s_objects = []
 s_imageList = {}
 s_player = None
 s_fader = None
+s_mouse = None
 
 GAMESTATUS_GAME = 0
 GAMESTATUS_GAMEOVER = 1
 s_gameStatus = GAMESTATUS_GAME
 
+
+
+
+
+
+class MouseInfo:
+    def __init__(self):
+        self.px = 0
+        self.py = 0
+        self.px_o = 0
+        self.py_o = 0
+        self.px_delta = 0
+        self.py_delta = 0
+        self.btn_l = False
+        self.btn_r = False
+    
+    def setPos(self, pos):
+        self.px_o = self.px
+        self.py_o = self.py
+        self.px = pos[0]
+        self.py = pos[1]
+        self.px_delta = self.px - self.px_o
+        self.py_delta = self.py - self.py_o
+        
 
 class GObject:
     def __init__(self, name, colsize, px, py):
@@ -181,7 +206,7 @@ class Player(LifeObject):
         self.has_shoted = False
         self.is_muteki = False
         self.timerMuteki = 0
-        self.speed = 100
+        self.speed = 300
         self.animList = self.makeAnimList([[0,0],[1,0],[2,0]])
         self.imgRect = self.animList[self.ANIM_MIDDLE]
         # バーニア
@@ -199,29 +224,34 @@ class Player(LifeObject):
         scrRect = SURFACE.get_rect()
         
         self.imgRect = self.animList[self.ANIM_MIDDLE]
-        if K_LEFT in s_keymap:
+        
+        if abs(s_mouse.px_delta) > 2 or abs(s_mouse.py_delta) > 2:
+            self.px = s_mouse.px
+            self.py = s_mouse.py
+        
+        if K_LEFT in s_keymap or s_mouse.px_delta < -2:
             self.imgRect = self.animList[self.ANIM_LEFT]
-            self.px -= self.speed * deltaTime
+            self.px -= self.speed * deltaTime 
             if self.px < (scrRect.left + self.rect.centerx):
                 self.px = scrRect.left + self.rect.centerx
             
-        if K_RIGHT in s_keymap:
+        if K_RIGHT in s_keymap or s_mouse.px_delta > 2:
             self.imgRect = self.animList[self.ANIM_RIGHT]
-            self.px += self.speed * deltaTime
+            self.px += self.speed * deltaTime 
             if self.px > (scrRect.right - self.rect.centerx):
                 self.px = scrRect.right - self.rect.centerx
             
-        if K_UP in s_keymap:
-            self.py -= self.speed * deltaTime
+        if K_UP in s_keymap or s_mouse.py_delta < -2:
+            self.py -= self.speed * deltaTime 
             if self.py < (scrRect.top + self.rect.centery):
                 self.py = scrRect.top + self.rect.centery
             
-        if K_DOWN in s_keymap:
+        if K_DOWN in s_keymap or s_mouse.py_delta > 2:
             self.py += self.speed * deltaTime
             if self.py > (scrRect.bottom - self.rect.centery):
                 self.py = scrRect.bottom - self.rect.centery
             
-        if K_SPACE in s_keymap:
+        if K_SPACE in s_keymap or s_mouse.btn_l:
             if not self.has_shoted:
                 self.has_shoted = True
                 # タマ出す
@@ -367,13 +397,12 @@ class CircleEffect(GObject):
 
 
 class EnemyUFO(LifeObject):
-    def __init__(self):
+    def __init__(self, centerObj, ox, oy):
         # 水平方向にランダムな位置に出現
         super().__init__(
             "enemy",
             20,
-            random.random() * 600 + 100,
-            -32,
+            centerObj.px + ox, centerObj.py + oy,
             3
         )
         # グラフィックはUFO
@@ -381,17 +410,21 @@ class EnemyUFO(LifeObject):
         self.animList = self.makeAnimList([[9,0]])
         self.rect = self.imgRect = self.animList[0]
         # 速度は下方向に等速移動
+        self.center = centerObj
+        self.off_x = ox
+        self.off_y = oy
         self.spdx = 0
-        self.spdy = 100 + random.random() * 1
+        self.spdy = 0
         # bullet timer
         self.bulletTimer = 1.0 + random.random() * 5
         self.bulletSpeed = 200
     
     def update(self, deltaTime):
         # スピード方向に移動
-        self.px += self.spdx * deltaTime
-        self.py += self.spdy * deltaTime
-        
+        # self.px += self.spdx * deltaTime
+        # self.py += self.spdy * deltaTime
+        self.px = self.center.px + self.off_x
+        self.py = self.center.py + self.off_y        
         # Bullet Timer
         self.bulletTimer -= deltaTime
         if self.bulletTimer <= 0.0:
@@ -442,29 +475,33 @@ class EnemyUFO(LifeObject):
             )
         )
 
-
 class Enemy00(LifeObject):
-    def __init__(self):
+    def __init__(self, centerObj, ox, oy):
         # 水平方向にランダムな位置に出現
         super().__init__(
             "enemy",
             20,
-            random.random() * 600 + 100,
-            -32,
+            centerObj.px + ox, centerObj.py + oy,
             1
         )
         # グラフィックはUFO
         self.image = s_imageList['ships']
-        self.animList = self.makeAnimList([[4,0]])
+        self.animList = self.makeAnimList([[5,0]])
         self.rect = self.imgRect = self.animList[0]
         # 速度は下方向に等速移動
+        self.center = centerObj
+        self.off_x = ox
+        self.off_y = oy
         self.spdx = 0
-        self.spdy = 150 + random.random() * 200
+        self.spdy = 0 #150 + random.random() * 200
     
     def update(self, deltaTime):
         # スピード方向に移動
-        self.px += self.spdx * deltaTime
-        self.py += self.spdy * deltaTime
+        # self.px += self.spdx * deltaTime
+        # self.py += self.spdy * deltaTime
+        self.px = self.center.px + self.off_x
+        self.py = self.center.py + self.off_y
+        
         # Player HIT?
         if self.isHitPlayer():
             s_player.onDamage(1)
@@ -492,7 +529,6 @@ class Enemy00(LifeObject):
         s_objects.append(
             CircleEffect(self.px, self.py)
         )
-
 
 class BackStars(GObject):
     def __init__(self):
@@ -529,7 +565,6 @@ class BackStars(GObject):
             ([self.px, self.py-4],
              [self.px, self.py+4]) )
 
-
 class Scene:
     def getSceneStatus(self):
         # -1 ... シーン実行中
@@ -552,7 +587,8 @@ class GameScene(Scene):
         s_objects.clear()
         s_gameStatus = GAMESTATUS_GAME
         # プレイヤーオブジェクトの生成
-        s_player = Player(400, 300)
+        scrRect = SURFACE.get_rect()
+        s_player = Player(scrRect.centerx, scrRect.bottom - 100)
         s_lifeGage = LifeGage()
         # Font
         self.textFont = pygame.font.SysFont('MS Gothic', 80)
@@ -564,6 +600,9 @@ class GameScene(Scene):
         self.timerStar = random.random() * 0.1
         # fade in
         s_fader.fadeIn(0.5, None)
+        # Enemy Center
+        self.center = EnemyCenter(stageTbl)
+        
         
     # def cbFuncNon(self):
     #     print("pass")
@@ -577,21 +616,14 @@ class GameScene(Scene):
     def update(self, deltaTime):
         # 敵を出現させる
         #TODO：将来的には出現テーブルで対応
-        self.enemyTime -= deltaTime
-        if self.enemyTime <= 0.0:
-            self.enemyTime = random.random() + 0.5
-            s_objects.append(
-                EnemyUFO()
-            )
-            s_objects.append(
-                Enemy00()
-            )
-            s_objects.append(
-                Enemy00()
-            )
-            s_objects.append(
-                Enemy00()
-            )
+        # self.enemyTime -= deltaTime
+        # if self.enemyTime <= 0.0:
+        #     self.enemyTime = random.random() + 0.5
+        #     s_objects.append(
+        #         EnemyUFO()
+        #     )
+        # enemy cente
+        self.center.update(deltaTime)
         # back star
         self.timerStar -= deltaTime
         if self.timerStar <= 0.0:
@@ -625,7 +657,6 @@ class GameScene(Scene):
             SURFACE.blit(self.textGAMEOVER,
                 (400 - self.textGAMEOVER.get_rect().width * 0.5, 200))
         
-
 class TitleScene(Scene):
     def __init__(self):
         global s_imageList, s_player, s_lifeGage, s_objects, s_fader
@@ -678,7 +709,6 @@ class TitleScene(Scene):
         SURFACE.blit(self.textSTART,
             (400 - self.textSTART.get_rect().width * 0.5, 400))
 
-
 class Fader(GObject):
     def __init__(self):
         super().__init__("fader", 0, 0, 0)
@@ -692,9 +722,7 @@ class Fader(GObject):
         self.timer = 0
         self.fadeTime = 0.5
         self.img_alpha = pygame.Surface(self.rect.size, pygame.SRCALPHA)
-        # colorKey = self.img_alpha.get_at((0,0))
         self.img_alpha.set_colorkey((0,0,0), pygame.RLEACCEL)
-        # self.img_alpha.fill((0,0,0), self.img_alpha.get_rect())
         self.funcEnd = None
     
     def fadeIn(self, fadeTime, funcEnd):
@@ -733,11 +761,7 @@ class Fader(GObject):
 
     def draw(self):
         self.img_alpha.fill((0,0,0,self.alpha))
-        # self.img_alpha.fill(
-        #     (255,0,0,self.alpha), self.rect, special_flags=pygame.BLEND_RGBA_MULT)
-        # self.img_alpha.set_alpha(self.alpha)s
         SURFACE.blit(self.img_alpha, (0,0))
-        # pygame.draw.rect(self.img_alpha, (0,0,0,self.alpha), self.img_alpha.get_rect())
                 
         # pygame.draw.rect(SURFACE, 
         #         (0,0,0),
@@ -750,9 +774,89 @@ class Fader(GObject):
         #         )
 
 
+
+ENE_E = 0
+ENE_U = 1
+MARGIN = 40
+
+stageTbl = [
+    (ENE_U, MARGIN * 0-2, MARGIN * -2),
+    (ENE_U, MARGIN * -1-2, MARGIN * -2), (ENE_U, MARGIN * 1-2, MARGIN * -2),
+    (ENE_U, MARGIN * -2-2, MARGIN * -2), (ENE_U, MARGIN * 2-2, MARGIN * -2),
+    (ENE_U, MARGIN * -3-2, MARGIN * -2), (ENE_U, MARGIN * 3-2, MARGIN * -2),
+    (ENE_U, MARGIN * -4-2, MARGIN * -2), (ENE_U, MARGIN * 4-2, MARGIN * -2),
+    (ENE_U, MARGIN * -5-2, MARGIN * -2), (ENE_U, MARGIN * 5-2, MARGIN * -2),
+    (ENE_U, MARGIN * -6-2, MARGIN * -2), (ENE_U, MARGIN * 6-2, MARGIN * -2),
+    
+    (ENE_E, MARGIN * 0, MARGIN * -1),
+    (ENE_E, MARGIN * -1, MARGIN * -1), (ENE_E, MARGIN * 1, MARGIN * -1),
+    (ENE_E, MARGIN * -2, MARGIN * -1), (ENE_E, MARGIN * 2, MARGIN * -1),
+    (ENE_E, MARGIN * -3, MARGIN * -1), (ENE_E, MARGIN * 3, MARGIN * -1),
+    (ENE_E, MARGIN * -4, MARGIN * -1), (ENE_E, MARGIN * 4, MARGIN * -1),
+    (ENE_E, MARGIN * -5, MARGIN * -1), (ENE_E, MARGIN * 5, MARGIN * -1),
+    (ENE_E, MARGIN * -6, MARGIN * -1), (ENE_E, MARGIN * 6, MARGIN * -1),
+    (ENE_E, MARGIN * -7, MARGIN * -1), (ENE_E, MARGIN * 7, MARGIN * -1),
+    
+    (ENE_E, MARGIN * 0, MARGIN * 0),
+    (ENE_E, MARGIN * -1, MARGIN * 0), (ENE_E, MARGIN * 1, MARGIN * 0),
+    (ENE_E, MARGIN * -2, MARGIN * 0), (ENE_E, MARGIN * 2, MARGIN * 0),
+    (ENE_E, MARGIN * -3, MARGIN * 0), (ENE_E, MARGIN * 3, MARGIN * 0),
+    (ENE_E, MARGIN * -4, MARGIN * 0), (ENE_E, MARGIN * 4, MARGIN * 0),
+    (ENE_E, MARGIN * -5, MARGIN * 0), (ENE_E, MARGIN * 5, MARGIN * 0),
+    (ENE_E, MARGIN * -6, MARGIN * 0), (ENE_E, MARGIN * 6, MARGIN * 0),
+    (ENE_E, MARGIN * -7, MARGIN * 0), (ENE_E, MARGIN * 7, MARGIN * 0),
+    (ENE_E, MARGIN * -8, MARGIN * 0), (ENE_E, MARGIN * 8, MARGIN * 0),
+
+    (ENE_E, MARGIN * 0, MARGIN * 1),
+    (ENE_E, MARGIN * -1, MARGIN * 1), (ENE_E, MARGIN * 1, MARGIN * 1),
+    (ENE_E, MARGIN * -2, MARGIN * 1), (ENE_E, MARGIN * 2, MARGIN * 1),
+    (ENE_E, MARGIN * -3, MARGIN * 1), (ENE_E, MARGIN * 3, MARGIN * 1),
+    (ENE_E, MARGIN * -4, MARGIN * 1), (ENE_E, MARGIN * 4, MARGIN * 1),
+    (ENE_E, MARGIN * -5, MARGIN * 1), (ENE_E, MARGIN * 5, MARGIN * 1),
+    (ENE_E, MARGIN * -6, MARGIN * 1), (ENE_E, MARGIN * 6, MARGIN * 1),
+    (ENE_E, MARGIN * -7, MARGIN * 1), (ENE_E, MARGIN * 7, MARGIN * 1),
+    (ENE_E, MARGIN * -8, MARGIN * 1), (ENE_E, MARGIN * 8, MARGIN * 1),
+    
+    (ENE_E, MARGIN * 0, MARGIN * 2),
+    (ENE_E, MARGIN * -1, MARGIN * 2), (ENE_E, MARGIN * 1, MARGIN * 2),
+    (ENE_E, MARGIN * -2, MARGIN * 2), (ENE_E, MARGIN * 2, MARGIN * 2),
+    (ENE_E, MARGIN * -3, MARGIN * 2), (ENE_E, MARGIN * 3, MARGIN * 2),
+    (ENE_E, MARGIN * -4, MARGIN * 2), (ENE_E, MARGIN * 4, MARGIN * 2),
+    (ENE_E, MARGIN * -5, MARGIN * 2), (ENE_E, MARGIN * 5, MARGIN * 2),
+    (ENE_E, MARGIN * -6, MARGIN * 2), (ENE_E, MARGIN * 6, MARGIN * 2),
+    (ENE_E, MARGIN * -7, MARGIN * 2), (ENE_E, MARGIN * 7, MARGIN * 2),
+    (ENE_E, MARGIN * -8, MARGIN * 2), (ENE_E, MARGIN * 8, MARGIN * 2),
+]
+
+
+class EnemyCenter(GObject):
+    def __init__(self, stageTbl):
+        self.scrRect = SURFACE.get_rect()
+        super().__init__("center", 0,
+                self.scrRect.centerx, self.scrRect.centery - 100)
+        # Enemy generate
+        for it in stageTbl:
+            enemy = None
+            if it[0] == ENE_E:
+                enemy = Enemy00( self, it[1], it[2])
+            elif it[0] == ENE_U:
+                enemy = EnemyUFO( self, it[1], it[2])
+            if enemy:
+                s_objects.append(
+                    enemy
+                )
+        # move
+        self.moveAngle = 0
+            
+    def update(self, deltaTime):
+        self.moveAngle += deltaTime
+        self.px = self.scrRect.centerx + math.cos(self.moveAngle) * 40
+        self.py = self.scrRect.centery - 100 + math.sin(self.moveAngle * 5) * 10
+
+
 def main():
     
-    global s_player, s_fader
+    global s_player, s_fader, s_mouse
     
     s_imageList['ships'] = pygame.image.load('img/assets/SpaceShooterAssetPack_Ships.png')
     s_imageList['miscellaneous'] = pygame.image.load('img/assets/SpaceShooterAssetPack_Miscellaneous.png')
@@ -767,7 +871,9 @@ def main():
     preTime = time.perf_counter()
         
     curScene = TitleScene()
-        
+    
+    s_mouse = MouseInfo()
+    
     ###################
     # メインループ
     ###################
@@ -780,11 +886,21 @@ def main():
             if event.type == QUIT:
                 pygame.quit()
                 sys.exit()
+            # Keyboard
             elif event.type == KEYDOWN:
                 if not event.key in s_keymap:
                     s_keymap.append(event.key)
             elif event.type == KEYUP:
-                s_keymap.remove(event.key)        
+                s_keymap.remove(event.key)    
+            # mouse
+            elif event.type == MOUSEMOTION:
+                s_mouse.setPos(event.pos)
+            elif event.type == MOUSEBUTTONDOWN:
+                s_mouse.setPos(event.pos)
+                s_mouse.btn_l = True
+            elif event.type == MOUSEBUTTONUP:
+                s_mouse.setPos(event.pos)
+                s_mouse.btn_l = False
         
         ###############
         # 更新
@@ -800,7 +916,7 @@ def main():
         
         # Fader update
         s_fader.update(deltaTime)
-
+        
         killList = []
 
         # オブジェクトの更新
