@@ -103,6 +103,14 @@ class GObject:
                 return True
         return False
 
+    # 線形補間
+    def interLinear(self, st, ed, rate):
+        return st + (ed - st) * rate
+
+    # サイン補間 
+    def interOutQuad(self, st, ed, rate):
+        return st + (ed - st) * math.sin(math.pi * 0.5 * rate)
+
 
 class LifeObject(GObject):
     def __init__(self, name, colsize, px, py, life):
@@ -396,45 +404,96 @@ class CircleEffect(GObject):
             1 )
 
 
-class EnemyUFO(LifeObject):
-    def __init__(self, centerObj, ox, oy):
+# Enemy 共通基底クラス
+class EnemyObject(LifeObject):
+    # Enemy State
+    STATE_START = 0
+    STATE_APPEAR = 1
+    STATE_NORMAL = 2
+    STATE_ATTACK = 3
+    
+    def __init__(self, name, colsize, centerObj, ofx, ofy, waitTime, stx, sty, life):
+        super().__init__(name, colsize, stx, sty, life)
+        # 速度は下方向に等速移動
+        self.center = centerObj
+        self.off_x = ofx
+        self.off_y = ofy
+        self.spdx = 0
+        self.spdy = 0
+        self.stx = stx
+        self.sty = sty
+        # Appear
+        self.appearTime = 2.0 # 出現移動時間
+        # State
+        self.waitTimer = waitTime
+        self.state = self.STATE_START
+
+    def updateState(self, deltaTime):
+        #===========
+        # State
+        #===========
+        if self.state == self.STATE_START:
+            # Start Waiting
+            self.waitTimer -= deltaTime
+            if self.waitTimer <= 0.0:
+                # end of wating
+                self.waitTimer = 0
+                self.state = self.STATE_APPEAR
+        elif self.state == self.STATE_APPEAR:
+            # move to offset pos
+            self.waitTimer += deltaTime
+            if self.waitTimer >= self.appearTime:
+                # end of moving
+                self.waitTimer = self.appearTime
+                self.state = self.STATE_NORMAL
+            rate = self.waitTimer/self.appearTime
+            self.px = self.interOutQuad( self.stx, (self.center.px + self.off_x), rate)
+            self.py = self.interOutQuad( self.sty, (self.center.py + self.off_y), rate)
+        elif self.state == self.STATE_NORMAL:        
+            # スピード方向に移動
+            # self.px += self.spdx * deltaTime
+            # self.py += self.spdy * deltaTime
+            self.px = self.center.px + self.off_x
+            self.py = self.center.py + self.off_y        
+
+class EnemyUFO(EnemyObject):
+    def __init__(self, centerObj, ofx, ofy, waitTime, stx, sty):
         # 水平方向にランダムな位置に出現
         super().__init__(
             "enemy",
             20,
-            centerObj.px + ox, centerObj.py + oy,
+            centerObj, ofx, ofy, waitTime, stx, sty,
             3
         )
         # グラフィックはUFO
         self.image = s_imageList['ships']
         self.animList = self.makeAnimList([[9,0]])
         self.rect = self.imgRect = self.animList[0]
-        # 速度は下方向に等速移動
-        self.center = centerObj
-        self.off_x = ox
-        self.off_y = oy
-        self.spdx = 0
-        self.spdy = 0
         # bullet timer
         self.bulletTimer = 1.0 + random.random() * 5
         self.bulletSpeed = 200
     
     def update(self, deltaTime):
-        # スピード方向に移動
-        # self.px += self.spdx * deltaTime
-        # self.py += self.spdy * deltaTime
-        self.px = self.center.px + self.off_x
-        self.py = self.center.py + self.off_y        
-        # Bullet Timer
-        self.bulletTimer -= deltaTime
-        if self.bulletTimer <= 0.0:
-            self.bulletTimer = 1.0 + random.random() * 5
-            if self.py < s_player.py:
-                self.shotBulletToPlayer()
+        #===========
+        # State
+        #===========
+        self.updateState(deltaTime)
+        
+        # Shot Bullet
+        if self.state == self.STATE_NORMAL:
+            # Bullet Timer
+            self.bulletTimer -= deltaTime
+            if self.bulletTimer <= 0.0:
+                self.bulletTimer = 1.0 + random.random() * 5
+                if self.py < s_player.py:
+                    self.shotBulletToPlayer()
+
+        #===========
+        # Common
+        #===========
         # Player HIT?
         if self.isHitPlayer():
             s_player.onDamage(1)
-
         # 画面の下に消えたら自動削除        
         scrRect = SURFACE.get_rect()
         if self.py > (scrRect.bottom + self.rect.centery):
@@ -475,33 +534,29 @@ class EnemyUFO(LifeObject):
             )
         )
 
-class Enemy00(LifeObject):
-    def __init__(self, centerObj, ox, oy):
+class Enemy00(EnemyObject):
+    def __init__(self, centerObj, ofx, ofy, waitTime, stx, sty):
         # 水平方向にランダムな位置に出現
         super().__init__(
             "enemy",
             20,
-            centerObj.px + ox, centerObj.py + oy,
+            centerObj, ofx, ofy, waitTime, stx, sty,
             1
         )
         # グラフィックはUFO
         self.image = s_imageList['ships']
         self.animList = self.makeAnimList([[5,0]])
         self.rect = self.imgRect = self.animList[0]
-        # 速度は下方向に等速移動
-        self.center = centerObj
-        self.off_x = ox
-        self.off_y = oy
-        self.spdx = 0
-        self.spdy = 0 #150 + random.random() * 200
     
     def update(self, deltaTime):
-        # スピード方向に移動
-        # self.px += self.spdx * deltaTime
-        # self.py += self.spdy * deltaTime
-        self.px = self.center.px + self.off_x
-        self.py = self.center.py + self.off_y
-        
+        #===========
+        # State
+        #===========
+        self.updateState(deltaTime)
+
+        #===========
+        # Common
+        #===========
         # Player HIT?
         if self.isHitPlayer():
             s_player.onDamage(1)
@@ -581,6 +636,9 @@ class Scene:
         pass
 
 class GameScene(Scene):
+    STATE_TITLE = 0
+    STATE_GAME = 1
+    
     def __init__(self):
         global s_imageList, s_player, s_lifeGage, s_objects, s_gameStatus, s_fader
         # オブジェクトの初期化
@@ -600,13 +658,18 @@ class GameScene(Scene):
         self.timerStar = random.random() * 0.1
         # fade in
         s_fader.fadeIn(0.5, None)
+        # enemy center
+        self.center = None
+        # State
+        self.state = self.STATE_TITLE
+        self.titleTimer = 2.0
         # Enemy Center
         self.center = EnemyCenter(stageTbl)
-        
-        
-    # def cbFuncNon(self):
-    #     print("pass")
-        
+        # State Title
+        self.textSTATETITLE = \
+            self.textFont.render(
+                self.center.stageTitle, True, (255,0,0))
+                
     def getSceneStatus(self):
         return self.status
 
@@ -614,16 +677,24 @@ class GameScene(Scene):
         return TitleScene()
 
     def update(self, deltaTime):
-        # 敵を出現させる
-        #TODO：将来的には出現テーブルで対応
-        # self.enemyTime -= deltaTime
-        # if self.enemyTime <= 0.0:
-        #     self.enemyTime = random.random() + 0.5
-        #     s_objects.append(
-        #         EnemyUFO()
-        #     )
-        # enemy cente
-        self.center.update(deltaTime)
+        #============
+        # STATE
+        #============
+        if self.state == self.STATE_TITLE:
+            # show titile
+            self.titleTimer -= deltaTime
+            if self.titleTimer <= 0:
+                self.titleTimer = 0
+                # enemy setup
+                self.center.setupEnemy()
+                self.state = self.STATE_GAME
+        elif self.state == self.STATE_GAME:
+            # game main
+            # enemy cente
+            self.center.update(deltaTime)
+        #============
+        # Common
+        #============
         # back star
         self.timerStar -= deltaTime
         if self.timerStar <= 0.0:
@@ -648,6 +719,11 @@ class GameScene(Scene):
         self.status = 0
 
     def draw(self):
+        if self.state == self.STATE_TITLE:
+            # STATE TITLE
+            SURFACE.blit(self.textSTATETITLE,
+                (400 - self.textSTATETITLE.get_rect().width * 0.5, 200))
+            
         # プレイヤーの描画
         s_player.draw()
         s_lifeGage.draw()
@@ -775,57 +851,69 @@ class Fader(GObject):
 
 
 
+STAGE_INFO = -2
+START_POS = -1
 ENE_E = 0
 ENE_U = 1
 MARGIN = 40
 
 stageTbl = [
-    (ENE_U, MARGIN * 0-2, MARGIN * -2),
-    (ENE_U, MARGIN * -1-2, MARGIN * -2), (ENE_U, MARGIN * 1-2, MARGIN * -2),
-    (ENE_U, MARGIN * -2-2, MARGIN * -2), (ENE_U, MARGIN * 2-2, MARGIN * -2),
-    (ENE_U, MARGIN * -3-2, MARGIN * -2), (ENE_U, MARGIN * 3-2, MARGIN * -2),
-    (ENE_U, MARGIN * -4-2, MARGIN * -2), (ENE_U, MARGIN * 4-2, MARGIN * -2),
-    (ENE_U, MARGIN * -5-2, MARGIN * -2), (ENE_U, MARGIN * 5-2, MARGIN * -2),
-    (ENE_U, MARGIN * -6-2, MARGIN * -2), (ENE_U, MARGIN * 6-2, MARGIN * -2),
+    # State Info
+    [STAGE_INFO, "STAGE 01"],
     
-    (ENE_E, MARGIN * 0, MARGIN * -1),
-    (ENE_E, MARGIN * -1, MARGIN * -1), (ENE_E, MARGIN * 1, MARGIN * -1),
-    (ENE_E, MARGIN * -2, MARGIN * -1), (ENE_E, MARGIN * 2, MARGIN * -1),
-    (ENE_E, MARGIN * -3, MARGIN * -1), (ENE_E, MARGIN * 3, MARGIN * -1),
-    (ENE_E, MARGIN * -4, MARGIN * -1), (ENE_E, MARGIN * 4, MARGIN * -1),
-    (ENE_E, MARGIN * -5, MARGIN * -1), (ENE_E, MARGIN * 5, MARGIN * -1),
-    (ENE_E, MARGIN * -6, MARGIN * -1), (ENE_E, MARGIN * 6, MARGIN * -1),
-    (ENE_E, MARGIN * -7, MARGIN * -1), (ENE_E, MARGIN * 7, MARGIN * -1),
+    # Enemy Start Position
+    # (START_POS, stx, sty)
+    (START_POS, 0, -32),
+    (START_POS, 800, -32),
     
-    (ENE_E, MARGIN * 0, MARGIN * 0),
-    (ENE_E, MARGIN * -1, MARGIN * 0), (ENE_E, MARGIN * 1, MARGIN * 0),
-    (ENE_E, MARGIN * -2, MARGIN * 0), (ENE_E, MARGIN * 2, MARGIN * 0),
-    (ENE_E, MARGIN * -3, MARGIN * 0), (ENE_E, MARGIN * 3, MARGIN * 0),
-    (ENE_E, MARGIN * -4, MARGIN * 0), (ENE_E, MARGIN * 4, MARGIN * 0),
-    (ENE_E, MARGIN * -5, MARGIN * 0), (ENE_E, MARGIN * 5, MARGIN * 0),
-    (ENE_E, MARGIN * -6, MARGIN * 0), (ENE_E, MARGIN * 6, MARGIN * 0),
-    (ENE_E, MARGIN * -7, MARGIN * 0), (ENE_E, MARGIN * 7, MARGIN * 0),
-    (ENE_E, MARGIN * -8, MARGIN * 0), (ENE_E, MARGIN * 8, MARGIN * 0),
+    # Enemy Offset
+    # (KindOfEnemy, stNo, ofx, ofy)
+    (ENE_U, 0, MARGIN * 0-2, MARGIN * -2),
+    (ENE_U, 1, MARGIN * -1-2, MARGIN * -2), (ENE_U, 0, MARGIN * 1-2, MARGIN * -2),
+    (ENE_U, 1, MARGIN * -2-2, MARGIN * -2), (ENE_U, 0, MARGIN * 2-2, MARGIN * -2),
+    (ENE_U, 1, MARGIN * -3-2, MARGIN * -2), (ENE_U, 0, MARGIN * 3-2, MARGIN * -2),
+    (ENE_U, 1, MARGIN * -4-2, MARGIN * -2), (ENE_U, 0, MARGIN * 4-2, MARGIN * -2),
+    (ENE_U, 1, MARGIN * -5-2, MARGIN * -2), (ENE_U, 0, MARGIN * 5-2, MARGIN * -2),
+    (ENE_U, 1, MARGIN * -6-2, MARGIN * -2), (ENE_U, 0, MARGIN * 6-2, MARGIN * -2),
+    
+    (ENE_E, 0, MARGIN * 0, MARGIN * -1),
+    (ENE_E, 1, MARGIN * -1, MARGIN * -1), (ENE_E, 0, MARGIN * 1, MARGIN * -1),
+    (ENE_E, 1, MARGIN * -2, MARGIN * -1), (ENE_E, 0, MARGIN * 2, MARGIN * -1),
+    (ENE_E, 1, MARGIN * -3, MARGIN * -1), (ENE_E, 0, MARGIN * 3, MARGIN * -1),
+    (ENE_E, 1, MARGIN * -4, MARGIN * -1), (ENE_E, 0, MARGIN * 4, MARGIN * -1),
+    (ENE_E, 1, MARGIN * -5, MARGIN * -1), (ENE_E, 0, MARGIN * 5, MARGIN * -1),
+    (ENE_E, 1, MARGIN * -6, MARGIN * -1), (ENE_E, 0, MARGIN * 6, MARGIN * -1),
+    (ENE_E, 1, MARGIN * -7, MARGIN * -1), (ENE_E, 0, MARGIN * 7, MARGIN * -1),
+    
+    (ENE_E, 0, MARGIN * 0, MARGIN * 0),
+    (ENE_E, 1, MARGIN * -1, MARGIN * 0), (ENE_E, 0, MARGIN * 1, MARGIN * 0),
+    (ENE_E, 1, MARGIN * -2, MARGIN * 0), (ENE_E, 0, MARGIN * 2, MARGIN * 0),
+    (ENE_E, 1, MARGIN * -3, MARGIN * 0), (ENE_E, 0, MARGIN * 3, MARGIN * 0),
+    (ENE_E, 1, MARGIN * -4, MARGIN * 0), (ENE_E, 0, MARGIN * 4, MARGIN * 0),
+    (ENE_E, 1, MARGIN * -5, MARGIN * 0), (ENE_E, 0, MARGIN * 5, MARGIN * 0),
+    (ENE_E, 1, MARGIN * -6, MARGIN * 0), (ENE_E, 0, MARGIN * 6, MARGIN * 0),
+    (ENE_E, 1, MARGIN * -7, MARGIN * 0), (ENE_E, 0, MARGIN * 7, MARGIN * 0),
+    (ENE_E, 1, MARGIN * -8, MARGIN * 0), (ENE_E, 0, MARGIN * 8, MARGIN * 0),
 
-    (ENE_E, MARGIN * 0, MARGIN * 1),
-    (ENE_E, MARGIN * -1, MARGIN * 1), (ENE_E, MARGIN * 1, MARGIN * 1),
-    (ENE_E, MARGIN * -2, MARGIN * 1), (ENE_E, MARGIN * 2, MARGIN * 1),
-    (ENE_E, MARGIN * -3, MARGIN * 1), (ENE_E, MARGIN * 3, MARGIN * 1),
-    (ENE_E, MARGIN * -4, MARGIN * 1), (ENE_E, MARGIN * 4, MARGIN * 1),
-    (ENE_E, MARGIN * -5, MARGIN * 1), (ENE_E, MARGIN * 5, MARGIN * 1),
-    (ENE_E, MARGIN * -6, MARGIN * 1), (ENE_E, MARGIN * 6, MARGIN * 1),
-    (ENE_E, MARGIN * -7, MARGIN * 1), (ENE_E, MARGIN * 7, MARGIN * 1),
-    (ENE_E, MARGIN * -8, MARGIN * 1), (ENE_E, MARGIN * 8, MARGIN * 1),
+    (ENE_E, 0, MARGIN * 0, MARGIN * 1),
+    (ENE_E, 1, MARGIN * -1, MARGIN * 1), (ENE_E, 0, MARGIN * 1, MARGIN * 1),
+    (ENE_E, 1, MARGIN * -2, MARGIN * 1), (ENE_E, 0, MARGIN * 2, MARGIN * 1),
+    (ENE_E, 1, MARGIN * -3, MARGIN * 1), (ENE_E, 0, MARGIN * 3, MARGIN * 1),
+    (ENE_E, 1, MARGIN * -4, MARGIN * 1), (ENE_E, 0, MARGIN * 4, MARGIN * 1),
+    (ENE_E, 1, MARGIN * -5, MARGIN * 1), (ENE_E, 0, MARGIN * 5, MARGIN * 1),
+    (ENE_E, 1, MARGIN * -6, MARGIN * 1), (ENE_E, 0, MARGIN * 6, MARGIN * 1),
+    (ENE_E, 1, MARGIN * -7, MARGIN * 1), (ENE_E, 0, MARGIN * 7, MARGIN * 1),
+    (ENE_E, 1, MARGIN * -8, MARGIN * 1), (ENE_E, 0, MARGIN * 8, MARGIN * 1),
     
-    (ENE_E, MARGIN * 0, MARGIN * 2),
-    (ENE_E, MARGIN * -1, MARGIN * 2), (ENE_E, MARGIN * 1, MARGIN * 2),
-    (ENE_E, MARGIN * -2, MARGIN * 2), (ENE_E, MARGIN * 2, MARGIN * 2),
-    (ENE_E, MARGIN * -3, MARGIN * 2), (ENE_E, MARGIN * 3, MARGIN * 2),
-    (ENE_E, MARGIN * -4, MARGIN * 2), (ENE_E, MARGIN * 4, MARGIN * 2),
-    (ENE_E, MARGIN * -5, MARGIN * 2), (ENE_E, MARGIN * 5, MARGIN * 2),
-    (ENE_E, MARGIN * -6, MARGIN * 2), (ENE_E, MARGIN * 6, MARGIN * 2),
-    (ENE_E, MARGIN * -7, MARGIN * 2), (ENE_E, MARGIN * 7, MARGIN * 2),
-    (ENE_E, MARGIN * -8, MARGIN * 2), (ENE_E, MARGIN * 8, MARGIN * 2),
+    (ENE_E, 0, MARGIN * 0, MARGIN * 2),
+    (ENE_E, 1, MARGIN * -1, MARGIN * 2), (ENE_E, 0, MARGIN * 1, MARGIN * 2),
+    (ENE_E, 1, MARGIN * -2, MARGIN * 2), (ENE_E, 0, MARGIN * 2, MARGIN * 2),
+    (ENE_E, 1, MARGIN * -3, MARGIN * 2), (ENE_E, 0, MARGIN * 3, MARGIN * 2),
+    (ENE_E, 1, MARGIN * -4, MARGIN * 2), (ENE_E, 0, MARGIN * 4, MARGIN * 2),
+    (ENE_E, 1, MARGIN * -5, MARGIN * 2), (ENE_E, 0, MARGIN * 5, MARGIN * 2),
+    (ENE_E, 1, MARGIN * -6, MARGIN * 2), (ENE_E, 0, MARGIN * 6, MARGIN * 2),
+    (ENE_E, 1, MARGIN * -7, MARGIN * 2), (ENE_E, 0, MARGIN * 7, MARGIN * 2),
+    (ENE_E, 1, MARGIN * -8, MARGIN * 2), (ENE_E, 0, MARGIN * 8, MARGIN * 2),
 ]
 
 
@@ -835,18 +923,43 @@ class EnemyCenter(GObject):
         super().__init__("center", 0,
                 self.scrRect.centerx, self.scrRect.centery - 100)
         # Enemy generate
-        for it in stageTbl:
-            enemy = None
-            if it[0] == ENE_E:
-                enemy = Enemy00( self, it[1], it[2])
-            elif it[0] == ENE_U:
-                enemy = EnemyUFO( self, it[1], it[2])
-            if enemy:
-                s_objects.append(
-                    enemy
-                )
+        self.stageTitle = ""
+        self.startPos = []
         # move
         self.moveAngle = 0
+        # state Information
+        self.setupStateInfo()
+
+
+    def setupStateInfo(self):
+        for it in stageTbl:
+            if it[0] == STAGE_INFO:
+                # state Information
+                self.stageTitle = it[1]
+
+        
+    def setupEnemy(self):
+        waitTimeCount = 0
+        for it in stageTbl:
+            if it[0] == START_POS:
+                # start postion
+                self.startPos.append((it[1], it[2]))
+            elif it[0] >= 0:
+                # enemy offset
+                stPos = self.startPos[it[1]]
+                enemy = None
+                if it[0] == ENE_E:
+                    # (centerObj, ofx, ofy, waitTime, stx, sty)
+                    enemy = Enemy00( self, it[2], it[3], waitTimeCount, stPos[0], stPos[1])
+                elif it[0] == ENE_U:
+                    # (centerObj, ofx, ofy, waitTime, stx, sty)
+                    enemy = EnemyUFO( self, it[2], it[3], waitTimeCount, stPos[0], stPos[1])
+                if enemy:
+                    s_objects.append(
+                        enemy
+                    )
+                # wait time
+                waitTimeCount += 0.1
             
     def update(self, deltaTime):
         self.moveAngle += deltaTime
