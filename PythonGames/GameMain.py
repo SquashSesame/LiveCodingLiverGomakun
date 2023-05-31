@@ -15,9 +15,15 @@ s_imageList = {}
 s_player = None
 s_fader = None
 s_mouse = None
+s_score = None
+s_limitTimer = None
+s_enemyCenter = None
+
+LIMIT_TIME = 60
 
 GAMESTATUS_GAME = 0
 GAMESTATUS_GAMEOVER = 1
+GAMESTATUS_STAGECLEAR = 2
 s_gameStatus = GAMESTATUS_GAME
 
 
@@ -52,6 +58,7 @@ class GObject:
         self.px = px
         self.py = py
         self.is_dead = False
+        self.is_hide = False
         self.scale = 4
         self.cellSize = 8 * self.scale
         self.image = None
@@ -111,7 +118,6 @@ class GObject:
     def interOutQuad(self, st, ed, rate):
         return st + (ed - st) * math.sin(math.pi * 0.5 * rate)
 
-
 class LifeObject(GObject):
     def __init__(self, name, colsize, px, py, life):
         super().__init__(name, colsize, px, py)
@@ -124,7 +130,6 @@ class LifeObject(GObject):
     
     def onDead(self):
         pass
-
     
 class Bullet(GObject):
     def __init__(self, px, py, spdx, spdy):
@@ -178,7 +183,6 @@ class Bullet(GObject):
                 
         return None
 
-
 class EnemyBullet(GObject):
     def __init__(self, px, py, spdx, spdy):
         super().__init__("bullet", 8, px, py)
@@ -201,7 +205,6 @@ class EnemyBullet(GObject):
             self.is_dead = True
             s_player.onDamage(self.attack)
     
-
 class Player(LifeObject):
     ANIM_RIGHT = 0
     ANIM_MIDDLE = 1
@@ -212,11 +215,14 @@ class Player(LifeObject):
         self.image = s_imageList['ships'] #pygame.image.load('img/player.png')
         self.rect = Rect(0,0,8,8)
         self.has_shoted = False
-        self.is_muteki = False
-        self.timerMuteki = 0
         self.speed = 300
         self.animList = self.makeAnimList([[0,0],[1,0],[2,0]])
         self.imgRect = self.animList[self.ANIM_MIDDLE]
+        # Muteki 
+        self.is_muteki = False
+        self.timerMuteki = 0
+        self.mutekiBlinkTime = 0.1
+        self.timerBlinkTime = 0
         # バーニア
         self.animIndexBaner = 0
         self.animTimerBaner = 0
@@ -233,41 +239,42 @@ class Player(LifeObject):
         
         self.imgRect = self.animList[self.ANIM_MIDDLE]
         
-        if abs(s_mouse.px_delta) > 2 or abs(s_mouse.py_delta) > 2:
-            self.px = s_mouse.px
-            self.py = s_mouse.py
-        
-        if K_LEFT in s_keymap or s_mouse.px_delta < -2:
-            self.imgRect = self.animList[self.ANIM_LEFT]
-            self.px -= self.speed * deltaTime 
-            if self.px < (scrRect.left + self.rect.centerx):
-                self.px = scrRect.left + self.rect.centerx
-            
-        if K_RIGHT in s_keymap or s_mouse.px_delta > 2:
-            self.imgRect = self.animList[self.ANIM_RIGHT]
-            self.px += self.speed * deltaTime 
-            if self.px > (scrRect.right - self.rect.centerx):
-                self.px = scrRect.right - self.rect.centerx
-            
-        if K_UP in s_keymap or s_mouse.py_delta < -2:
-            self.py -= self.speed * deltaTime 
-            if self.py < (scrRect.top + self.rect.centery):
-                self.py = scrRect.top + self.rect.centery
-            
-        if K_DOWN in s_keymap or s_mouse.py_delta > 2:
-            self.py += self.speed * deltaTime
-            if self.py > (scrRect.bottom - self.rect.centery):
-                self.py = scrRect.bottom - self.rect.centery
-            
-        if K_SPACE in s_keymap or s_mouse.btn_l:
-            if not self.has_shoted:
-                self.has_shoted = True
-                # タマ出す
-                s_objects.append(
-                    Bullet(self.px, self.py,
-                        0, -400))
-        else:
-            self.has_shoted = False
+        if s_gameStatus == GAMESTATUS_GAME:        
+            if abs(s_mouse.px_delta) > 2 or abs(s_mouse.py_delta) > 2:
+                self.px = s_mouse.px
+                self.py = s_mouse.py
+
+            if K_LEFT in s_keymap or s_mouse.px_delta < -2:
+                self.imgRect = self.animList[self.ANIM_LEFT]
+                self.px -= self.speed * deltaTime 
+                if self.px < (scrRect.left + self.rect.centerx):
+                    self.px = scrRect.left + self.rect.centerx
+                
+            if K_RIGHT in s_keymap or s_mouse.px_delta > 2:
+                self.imgRect = self.animList[self.ANIM_RIGHT]
+                self.px += self.speed * deltaTime 
+                if self.px > (scrRect.right - self.rect.centerx):
+                    self.px = scrRect.right - self.rect.centerx
+                
+            if K_UP in s_keymap or s_mouse.py_delta < -2:
+                self.py -= self.speed * deltaTime 
+                if self.py < (scrRect.top + self.rect.centery):
+                    self.py = scrRect.top + self.rect.centery
+                
+            if K_DOWN in s_keymap or s_mouse.py_delta > 2:
+                self.py += self.speed * deltaTime
+                if self.py > (scrRect.bottom - self.rect.centery):
+                    self.py = scrRect.bottom - self.rect.centery
+                
+            if K_SPACE in s_keymap or s_mouse.btn_l:
+                if not self.has_shoted:
+                    self.has_shoted = True
+                    # タマ出す
+                    s_objects.append(
+                        Bullet(self.px, self.py,
+                            0, -400))
+            else:
+                self.has_shoted = False
 
         # バーニア
         self.imgRectBaner = self.animListBaner[self.animIndexBaner]
@@ -281,14 +288,21 @@ class Player(LifeObject):
         
         # 無敵時間
         if self.is_muteki:
+            # Blink
+            self.timerBlinkTime -= deltaTime
+            if self.timerBlinkTime <= 0:
+                self.timerBlinkTime = self.mutekiBlinkTime
+                self.is_hide = self.is_hide == False
+            # Muteki Time 
             self.timerMuteki += deltaTime
             if self.timerMuteki > 1.0:
                 self.timerMuteki = 0
                 self.is_muteki = False
+                self.is_hide = False
 
 
     def draw(self):
-        if self.is_dead:
+        if self.is_dead or self.is_hide:
             return
         
         SURFACE.blit(
@@ -323,20 +337,20 @@ class Player(LifeObject):
         )
         s_gameStatus = GAMESTATUS_GAMEOVER
         
-
 class LifeGage(GObject):
     def __init__(self):
         super().__init__("lifegage", 0, 32, 32)
         self.image = s_imageList['miscellaneous'] #pygame.image.load('img/player.png')
         self.animList = self.makeAnimList([[0,4]])
         self.imgRect = self.animList[0]
+        self.widthHeart = 7 * self.scale
 
     def draw(self):
         for hp in range(s_player.life):        
             SURFACE.blit(
                 pygame.transform.scale_by(
                     self.image, self.scale),
-                (self.px + hp * self.cellSize, self.py),
+                (self.px + hp * self.widthHeart, self.py),
                 self.imgRect)
 
 
@@ -368,7 +382,6 @@ class BoxParticle(GObject):
             (self.px, self.py,
              self.width, self.height), 1
         )
-
 
 class CircleEffect(GObject):
     def __init__(self, px, py):
@@ -412,7 +425,7 @@ class EnemyObject(LifeObject):
     STATE_NORMAL = 2
     STATE_ATTACK = 3
     
-    def __init__(self, name, colsize, centerObj, ofx, ofy, waitTime, stx, sty, life):
+    def __init__(self, name, colsize, centerObj, ofx, ofy, waitTime, stx, sty, life, score):
         super().__init__(name, colsize, stx, sty, life)
         # 速度は下方向に等速移動
         self.center = centerObj
@@ -422,6 +435,7 @@ class EnemyObject(LifeObject):
         self.spdy = 0
         self.stx = stx
         self.sty = sty
+        self.score = score
         # Appear
         self.appearTime = 2.0 # 出現移動時間
         # State
@@ -454,7 +468,16 @@ class EnemyObject(LifeObject):
             # self.px += self.spdx * deltaTime
             # self.py += self.spdy * deltaTime
             self.px = self.center.px + self.off_x
-            self.py = self.center.py + self.off_y        
+            self.py = self.center.py + self.off_y 
+    
+    def onDead(self):
+        # Dead Flag ON
+        self.is_dead = True
+        # Add Score
+        s_score.addScore(self.score)
+        # Dead to EnemyCenter
+        s_enemyCenter.deadEnemy()
+        super().onDead()       
 
 class EnemyUFO(EnemyObject):
     def __init__(self, centerObj, ofx, ofy, waitTime, stx, sty):
@@ -463,7 +486,8 @@ class EnemyUFO(EnemyObject):
             "enemy",
             20,
             centerObj, ofx, ofy, waitTime, stx, sty,
-            3
+            3,
+            100
         )
         # グラフィックはUFO
         self.image = s_imageList['ships']
@@ -485,7 +509,8 @@ class EnemyUFO(EnemyObject):
             self.bulletTimer -= deltaTime
             if self.bulletTimer <= 0.0:
                 self.bulletTimer = 1.0 + random.random() * 5
-                if self.py < s_player.py:
+                if self.py < s_player.py and \
+                    s_gameStatus == GAMESTATUS_GAME:
                     self.shotBulletToPlayer()
 
         #===========
@@ -513,7 +538,7 @@ class EnemyUFO(EnemyObject):
         
     def onDead(self):
         #TODO： やられエフェクトを出して死亡
-        self.is_dead = True
+        super().onDead()
         s_objects.append(
             CircleEffect(self.px, self.py)
         )
@@ -541,7 +566,8 @@ class Enemy00(EnemyObject):
             "enemy",
             20,
             centerObj, ofx, ofy, waitTime, stx, sty,
-            1
+            1,
+            10
         )
         # グラフィックはUFO
         self.image = s_imageList['ships']
@@ -580,7 +606,7 @@ class Enemy00(EnemyObject):
     
     def onDead(self):
         #TODO： やられエフェクトを出して死亡
-        self.is_dead = True
+        super().onDead()
         s_objects.append(
             CircleEffect(self.px, self.py)
         )
@@ -640,7 +666,7 @@ class GameScene(Scene):
     STATE_GAME = 1
     
     def __init__(self):
-        global s_imageList, s_player, s_lifeGage, s_objects, s_gameStatus, s_fader
+        global s_imageList, s_player, s_lifeGage, s_objects, s_gameStatus, s_fader, s_score, s_limitTimer, s_enemyCenter
         # オブジェクトの初期化
         s_objects.clear()
         s_gameStatus = GAMESTATUS_GAME
@@ -648,9 +674,13 @@ class GameScene(Scene):
         scrRect = SURFACE.get_rect()
         s_player = Player(scrRect.centerx, scrRect.bottom - 100)
         s_lifeGage = LifeGage()
+        s_score = Score()
+        s_limitTimer = LimitTimer(LIMIT_TIME, self.cbTimeUp)
+        s_limitTimer.reset()
         # Font
         self.textFont = pygame.font.SysFont('MS Gothic', 80)
         self.textGAMEOVER = self.textFont.render("GAME OVER", True, (255,0,0))
+        self.textSTAGECLEAR = self.textFont.render("STAGE CLEAR", True, (255,0,255))
         # 敵を出現させるタイマー
         self.enemyTime = random.random() + 0.5
         self.status = -1
@@ -658,18 +688,23 @@ class GameScene(Scene):
         self.timerStar = random.random() * 0.1
         # fade in
         s_fader.fadeIn(0.5, None)
-        # enemy center
-        self.center = None
         # State
         self.state = self.STATE_TITLE
         self.titleTimer = 2.0
         # Enemy Center
-        self.center = EnemyCenter(stageTbl)
+        s_enemyCenter = EnemyCenter(stageTbl, self.cbEnemyEmpty)
         # State Title
         self.textSTATETITLE = \
             self.textFont.render(
-                self.center.stageTitle, True, (255,0,0))
+                s_enemyCenter.stageTitle, True, (255,0,0))
                 
+    def cbEnemyEmpty(self):
+        # 敵全滅
+        # Stage Clear
+        global s_gameStatus
+        s_gameStatus = GAMESTATUS_STAGECLEAR
+        s_limitTimer.stop()
+    
     def getSceneStatus(self):
         return self.status
 
@@ -686,12 +721,13 @@ class GameScene(Scene):
             if self.titleTimer <= 0:
                 self.titleTimer = 0
                 # enemy setup
-                self.center.setupEnemy()
+                s_limitTimer.start()
+                s_enemyCenter.setupEnemy()
                 self.state = self.STATE_GAME
         elif self.state == self.STATE_GAME:
             # game main
             # enemy cente
-            self.center.update(deltaTime)
+            s_enemyCenter.update(deltaTime)
         #============
         # Common
         #============
@@ -705,6 +741,9 @@ class GameScene(Scene):
             s_objects.append(
                 BackStars()
             )
+        # SCORE
+        s_score.update(deltaTime)
+        s_limitTimer.update(deltaTime)
         # プレイヤーの移動
         s_player.update(deltaTime)
         s_lifeGage.update(deltaTime)
@@ -715,6 +754,10 @@ class GameScene(Scene):
                 # fade out
                 s_fader.fadeOut(0.5, self.cbFadeEnd)
                 
+    def cbTimeUp(self):
+        global s_gameStatus
+        s_gameStatus = GAMESTATUS_GAMEOVER
+    
     def cbFadeEnd(self):
         self.status = 0
 
@@ -727,9 +770,16 @@ class GameScene(Scene):
         # プレイヤーの描画
         s_player.draw()
         s_lifeGage.draw()
+        # SCORE
+        s_score.draw()
+        s_limitTimer.draw()
         
-        # GAGAME OVER?
-        if s_gameStatus == GAMESTATUS_GAMEOVER:
+        # STAGE CLEAR?
+        if s_gameStatus == GAMESTATUS_STAGECLEAR:
+            SURFACE.blit(self.textSTAGECLEAR,
+                (400 - self.textSTAGECLEAR.get_rect().width * 0.5, 200))        
+        # GAME OVER?
+        elif s_gameStatus == GAMESTATUS_GAMEOVER:
             SURFACE.blit(self.textGAMEOVER,
                 (400 - self.textGAMEOVER.get_rect().width * 0.5, 200))
         
@@ -849,7 +899,77 @@ class Fader(GObject):
         #             )
         #         )
 
+class Score(GObject):
+    def __init__(self):
+        super().__init__("score", 0, 400, 8)
+        # Font
+        self.textFont = pygame.font.SysFont('MS Gothic', 40)
+        self.textScore = self.textFont.render("SCORE", True, (255,255,255))
+        self.resetScore()
+        self.addScore(0)
+        
+    def resetScore(self):
+        self.totalScore = 0
+    
+    def addScore(self, score):
+        self.totalScore += score
+        self.textScoreNum = self.textFont.render(
+            f'{self.totalScore:08}', True, (255,255,255))
+    
+    def update(self, deltaTime):
+        pass
 
+    def draw(self):
+        scrRect = SURFACE.get_rect()
+        SURFACE.blit(self.textScore,
+            ((scrRect.width - self.textScore.get_rect().width) * 0.5, 8))
+        SURFACE.blit(self.textScoreNum,
+            ((scrRect.width - self.textScoreNum.get_rect().width) * 0.5, 48))
+        
+class LimitTimer(GObject):
+    def __init__(self, time, funcEnd):
+        super().__init__("timer", 0, 400, 8)
+        # Font
+        self.textFont = pygame.font.SysFont('MS Gothic', 40)
+        self.textTime = self.textFont.render("TIME", True, (255,255,255))
+        self.is_start = False
+        self.funcEndOfTimer = funcEnd
+        self.resetTime = time
+        self.reset()
+        
+    def reset(self):
+        self.limitTimer = self.resetTime
+    
+    def start(self):
+        self.is_start = True
+    
+    def stop(self):
+        self.is_start = False
+
+    def isTimeUp(self):
+        return self.limitTimer <= 0
+    
+    def update(self, deltaTime):
+        if self.is_start:
+            self.limitTimer -= deltaTime
+            if self.limitTimer <= 0.0:
+                self.limitTimer = 0
+                self.is_start = False
+                # call back
+                if self.funcEndOfTimer:
+                    self.funcEndOfTimer()
+
+    def draw(self):
+        scrRect = SURFACE.get_rect()
+        
+        self.textTimeNum = self.textFont.render(
+            str(int(self.limitTimer)), True, (255,255,255))
+        
+        SURFACE.blit(self.textTime,
+            ((scrRect.width - self.textTime.get_rect().width) * 0.5 + 200, 8))
+        SURFACE.blit(self.textTimeNum,
+            ((scrRect.width - self.textTimeNum.get_rect().width) * 0.5 + 200, 48))
+            
 
 STAGE_INFO = -2
 START_POS = -1
@@ -918,7 +1038,7 @@ stageTbl = [
 
 
 class EnemyCenter(GObject):
-    def __init__(self, stageTbl):
+    def __init__(self, stageTbl, funcEnd):
         self.scrRect = SURFACE.get_rect()
         super().__init__("center", 0,
                 self.scrRect.centerx, self.scrRect.centery - 100)
@@ -927,8 +1047,19 @@ class EnemyCenter(GObject):
         self.startPos = []
         # move
         self.moveAngle = 0
+        self.enemyCount = 0
+        self.funcEndOfEnemy = funcEnd
         # state Information
         self.setupStateInfo()
+
+
+    def deadEnemy(self):
+        self.enemyCount -= 1
+        if self.enemyCount <= 0:
+            self.enemyCount = 0
+            # callback
+            if self.funcEndOfEnemy:
+                self.funcEndOfEnemy()
 
 
     def setupStateInfo(self):
@@ -958,6 +1089,7 @@ class EnemyCenter(GObject):
                     s_objects.append(
                         enemy
                     )
+                    self.enemyCount += 1
                 # wait time
                 waitTimeCount += 0.1
             
