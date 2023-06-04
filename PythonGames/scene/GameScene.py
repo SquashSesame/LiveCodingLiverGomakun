@@ -1,0 +1,140 @@
+import pygame
+import sys
+import time
+import random
+import math
+
+from pygame.locals import *
+import Defines as g
+from scene.Scene import *
+from player.Player import *
+from gui.LifeGage import *
+from gui.Score import *
+from gui.LimitTimer import *
+from enemy.EnemyCenter import *
+from stage.Stage01_Tbl import *
+from effect.BackStars import *
+
+# from typing import TYPE_CHECKING
+# if TYPE_CHECKING:
+from scene.TitleScene import *
+
+class GameScene(Scene):
+    STATE_TITLE = 0
+    STATE_GAME = 1
+    
+    def __init__(self):
+        # オブジェクトの初期化
+        g.objects.clear()
+        g.gameStatus = g.GAMESTATUS_GAME
+        # プレイヤーオブジェクトの生成
+        scrRect = g.SURFACE.get_rect()
+        g.player = Player(scrRect.centerx, scrRect.bottom - 100)
+        g.lifeGage = LifeGage()
+        g.score = Score()
+        g.limitTimer = LimitTimer(g.LIMIT_TIME, self.cbTimeUp)
+        g.limitTimer.reset()
+        # Font
+        self.textFont = pygame.font.SysFont('MS Gothic', 80)
+        self.textGAMEOVER = self.textFont.render("GAME OVER", True, (255,0,0))
+        self.textSTAGECLEAR = self.textFont.render("STAGE CLEAR", True, (255,0,255))
+        # 敵を出現させるタイマー
+        self.enemyTime = random.random() + 0.5
+        self.status = -1
+        # Back Stars
+        self.timerStar = random.random() * 0.1
+        # fade in
+        g.fader.fadeIn(0.5, None)
+        # State
+        self.state = self.STATE_TITLE
+        self.titleTimer = 2.0
+        # Enemy Center
+        g.enemyCenter = EnemyCenter(Stage01_Tbl, self.cbEnemyEmpty)
+        # State Title
+        self.textSTATETITLE = self.textFont.render(
+                g.enemyCenter.stageTitle, True, (255,0,0))
+                
+    def cbEnemyEmpty(self):
+        # 敵全滅
+        # Stage Clear
+        g.gameStatus = g.GAMESTATUS_STAGECLEAR
+        g.limitTimer.stop()
+    
+    def getSceneStatus(self):
+        return self.status
+
+    def nextScene(self):
+        return TitleScene()
+
+    def update(self, deltaTime):
+        #============
+        # STATE
+        #============
+        if self.state == self.STATE_TITLE:
+            # show titile
+            self.titleTimer -= deltaTime
+            if self.titleTimer <= 0:
+                self.titleTimer = 0
+                # enemy setup
+                g.limitTimer.start()
+                g.enemyCenter.setupEnemy()
+                self.state = self.STATE_GAME
+        elif self.state == self.STATE_GAME:
+            # game main
+            # enemy cente
+            g.enemyCenter.update(deltaTime)
+            
+        #============
+        # Common
+        #============
+        # back star
+        self.timerStar -= deltaTime
+        if self.timerStar <= 0.0:
+            self.timerStar = random.random() * 0.1
+            g.objects.append(
+                BackStars()
+            )
+            g.objects.append(
+                BackStars()
+            )
+        # SCORE
+        g.score.update(deltaTime)
+        g.limitTimer.update(deltaTime)
+        # プレイヤーの移動
+        g.player.update(deltaTime)
+        g.lifeGage.update(deltaTime)
+        # ゲームオーバー
+        if g.gameStatus == g.GAMESTATUS_GAMEOVER:
+            if K_SPACE in g.keymap:
+                # end of game scene
+                # fade out
+                g.fader.fadeOut(0.5, self.cbFadeEnd)
+                
+    def cbTimeUp(self):
+        g.gameStatus = g.GAMESTATUS_GAMEOVER
+    
+    def cbFadeEnd(self):
+        self.status = 0
+
+    def draw(self):
+            
+        # プレイヤーの描画
+        g.player.draw()
+        g.lifeGage.draw()
+        # SCORE
+        g.score.draw()
+        g.limitTimer.draw()
+        
+        if self.state == self.STATE_TITLE:
+            # STATE TITLE
+            g.SURFACE.blit(self.textSTATETITLE,
+                (400 - self.textSTATETITLE.get_rect().width * 0.5, 200))
+
+        # STAGE CLEAR?
+        if g.gameStatus == g.GAMESTATUS_STAGECLEAR:
+            g.SURFACE.blit(self.textSTAGECLEAR,
+                (400 - self.textSTAGECLEAR.get_rect().width * 0.5, 200))        
+        # GAME OVER?
+        elif g.gameStatus == g.GAMESTATUS_GAMEOVER:
+            g.SURFACE.blit(self.textGAMEOVER,
+                (400 - self.textGAMEOVER.get_rect().width * 0.5, 200))
