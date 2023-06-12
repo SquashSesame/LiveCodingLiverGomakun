@@ -34,11 +34,11 @@ g.enemyCenter = None
 g.LIMIT_TIME = 60
 g.GAMESTATUS_GAME = 0
 g.GAMESTATUS_GAMEOVER = 1
-g.GAMESTATUS_STAGECLEAR = 2
 g.gameStatus = g.GAMESTATUS_GAME
 
 g.mouse = MouseInfo()
 g.fader = Fader()
+
 
 # メイン        
 def main():

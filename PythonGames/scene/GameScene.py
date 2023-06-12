@@ -12,7 +12,7 @@ from gui.LifeGage import *
 from gui.Score import *
 from gui.LimitTimer import *
 from enemy.EnemyCenter import *
-from stage.Stage01_Tbl import *
+from stage.StageAll_Tbl import *
 from effect.BackStars import *
 
 # from typing import TYPE_CHECKING
@@ -22,18 +22,18 @@ from scene.TitleScene import *
 class GameScene(Scene):
     STATE_TITLE = 0
     STATE_GAME = 1
+    STATE_CLEAR = 2
+    STATE_GAMECLEAR = 3
     
     def __init__(self):
         # オブジェクトの初期化
         g.objects.clear()
-        g.gameStatus = g.GAMESTATUS_GAME
         # プレイヤーオブジェクトの生成
         scrRect = g.SURFACE.get_rect()
         g.player = Player(scrRect.centerx, scrRect.bottom - 100)
         g.lifeGage = LifeGage()
         g.score = Score()
         g.limitTimer = LimitTimer(g.LIMIT_TIME, self.cbTimeUp)
-        g.limitTimer.reset()
         # Font
         self.textFont = pygame.font.SysFont('MS Gothic', 80)
         self.textGAMEOVER = self.textFont.render("GAME OVER", True, (255,0,0))
@@ -44,12 +44,22 @@ class GameScene(Scene):
         # Back Stars
         self.timerStar = random.random() * 0.1
         # fade in
-        g.fader.fadeIn(0.5, None)
-        # State
+        g.fader.fadeIn(0.5, None)        
+        # init stage
+        self.stageNo = 0
+        self.initStage(self.stageNo)
+        
+    # ステージの初期化をする        
+    def initStage(self, stageNo):
+        # Reset State Timer
+        g.limitTimer.reset()
+        # Game State
+        g.gameStatus = g.GAMESTATUS_GAME
+        # State State
         self.state = self.STATE_TITLE
         self.titleTimer = 2.0
         # Enemy Center
-        g.enemyCenter = EnemyCenter(Stage01_Tbl, self.cbEnemyEmpty)
+        g.enemyCenter = EnemyCenter(StageAll_Tbl[stageNo], self.cbEnemyEmpty)
         # State Title
         self.textSTATETITLE = self.textFont.render(
                 g.enemyCenter.stageTitle, True, (255,0,0))
@@ -57,7 +67,8 @@ class GameScene(Scene):
     def cbEnemyEmpty(self):
         # 敵全滅
         # Stage Clear
-        g.gameStatus = g.GAMESTATUS_STAGECLEAR
+        self.state = self.STATE_CLEAR
+        self.titleTimer = 2.0
         g.limitTimer.stop()
     
     def getSceneStatus(self):
@@ -83,6 +94,27 @@ class GameScene(Scene):
             # game main
             # enemy cente
             g.enemyCenter.update(deltaTime)
+        elif self.state == self.STATE_CLEAR:
+            # stage clear
+            self.titleTimer -= deltaTime
+            if self.titleTimer <= 0:
+                self.titleTimer = 0
+                # next stage
+                self.stageNo += 1
+                if len(StageAll_Tbl) > self.stageNo:
+                    # next stage
+                    self.initStage(self.stageNo)
+                else:
+                    # all stage clear!!
+                    self.state = self.STATE_GAMECLEAR
+                    self.textSTAGECLEAR = self.textFont.render(
+                        "GAME CLEAR !!", True, (255,0,0))
+                    
+        elif self.state == self.STATE_GAMECLEAR:
+            # GAME CLEAR
+            #TODO:Ending
+            pass
+            
             
         #============
         # Common
@@ -129,9 +161,8 @@ class GameScene(Scene):
             # STATE TITLE
             g.SURFACE.blit(self.textSTATETITLE,
                 (400 - self.textSTATETITLE.get_rect().width * 0.5, 200))
-
         # STAGE CLEAR?
-        if g.gameStatus == g.GAMESTATUS_STAGECLEAR:
+        if self.state == self.STATE_CLEAR or self.state == self.STATE_GAMECLEAR:
             g.SURFACE.blit(self.textSTAGECLEAR,
                 (400 - self.textSTAGECLEAR.get_rect().width * 0.5, 200))        
         # GAME OVER?
