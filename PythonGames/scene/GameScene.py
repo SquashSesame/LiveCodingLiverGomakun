@@ -18,12 +18,14 @@ from effect.BackStars import *
 # from typing import TYPE_CHECKING
 # if TYPE_CHECKING:
 from scene.TitleScene import *
+from scene.EndingScene import *
 
 class GameScene(Scene):
     STATE_TITLE = 0
     STATE_GAME = 1
     STATE_CLEAR = 2
     STATE_GAMECLEAR = 3
+    STATE_NEXTSCENE = -1
     
     def __init__(self):
         # オブジェクトの初期化
@@ -75,7 +77,10 @@ class GameScene(Scene):
         return self.status
 
     def nextScene(self):
-        return TitleScene()
+        if g.gameStatus == g.GAMESTATUS_GAME:
+            return EndingScene()
+        else:
+            return TitleScene()
 
     def update(self, deltaTime):
         #============
@@ -107,12 +112,21 @@ class GameScene(Scene):
                 else:
                     # all stage clear!!
                     self.state = self.STATE_GAMECLEAR
+                    g.gameStatus = g.GAMESTATUS_GAME
+                    self.titleTimer = 2.0
                     self.textSTAGECLEAR = self.textFont.render(
                         "GAME CLEAR !!", True, (255,0,0))
                     
         elif self.state == self.STATE_GAMECLEAR:
             # GAME CLEAR
-            #TODO:Ending
+            self.titleTimer -= deltaTime
+            if self.titleTimer <= 0:
+                self.titleTimer = 0
+                # fade out
+                g.fader.fadeOut(0.5, self.cbFadeEnd)
+                self.state = self.STATE_NEXTSCENE
+
+        elif self.state == self.STATE_NEXTSCENE:
             pass
             
             
@@ -144,7 +158,7 @@ class GameScene(Scene):
                 
     def cbTimeUp(self):
         g.gameStatus = g.GAMESTATUS_GAMEOVER
-    
+        
     def cbFadeEnd(self):
         self.status = 0
 
