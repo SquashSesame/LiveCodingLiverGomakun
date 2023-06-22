@@ -23,45 +23,43 @@ Stage03_Tbl = [
     (E_U, 3, MARGIN * -2-2, MARGIN * -2), (E_U, 2, MARGIN * 2-2, MARGIN * -2),
     (E_U, 1, MARGIN * -3-2, MARGIN * 2), (E_U, 0, MARGIN * 3-2, MARGIN * 2),
 
-    # (E_U, 3, MARGIN * -3-2, MARGIN * -2), (E_U, 2, MARGIN * 3-2, MARGIN * -2),
-    # (E_U, 1, MARGIN * -4-2, MARGIN * 2), (E_U, 0, MARGIN * 4-2, MARGIN * 2),
+    (E_U, 3, MARGIN * -3-2, MARGIN * -2), (E_U, 2, MARGIN * 3-2, MARGIN * -2),
+    (E_U, 1, MARGIN * -4-2, MARGIN * 2), (E_U, 0, MARGIN * 4-2, MARGIN * 2),
 
-    # (E_U, 3, MARGIN * -4-2, MARGIN * -2), (E_U, 2, MARGIN * 4-2, MARGIN * -2),
-    # (E_U, 1, MARGIN * -5-2, MARGIN * 2), (E_U, 0, MARGIN * 5-2, MARGIN * 2),
+    (E_U, 3, MARGIN * -4-2, MARGIN * -2), (E_U, 2, MARGIN * 4-2, MARGIN * -2),
+    (E_U, 1, MARGIN * -5-2, MARGIN * 2), (E_U, 0, MARGIN * 5-2, MARGIN * 2),
 
-    # (E_U, 3, MARGIN * -5-2, MARGIN * -2), (E_U, 2, MARGIN * 5-2, MARGIN * -2),
-    # (E_U, 1, MARGIN * -6-2, MARGIN * 2), (E_U, 0, MARGIN * 6-2, MARGIN * 2),
+    (E_U, 3, MARGIN * -5-2, MARGIN * -2), (E_U, 2, MARGIN * 5-2, MARGIN * -2),
+    (E_U, 1, MARGIN * -6-2, MARGIN * 2), (E_U, 0, MARGIN * 6-2, MARGIN * 2),
 
-    # (E_U, 3, MARGIN * -2.5-2, MARGIN * -1), (E_U, 2, MARGIN * 2.5-2, MARGIN * -1),
-    # (E_U, 1, MARGIN * -2.5-2, MARGIN * 3), (E_U, 0, MARGIN * 2.5-2, MARGIN * 3),
+    (E_U, 3, MARGIN * -2.5-2, MARGIN * -1), (E_U, 2, MARGIN * 2.5-2, MARGIN * -1),
+    (E_U, 1, MARGIN * -2.5-2, MARGIN * 3), (E_U, 0, MARGIN * 2.5-2, MARGIN * 3),
 
-    # (E_U, 3, MARGIN * -3.5-2, MARGIN * -1), (E_U, 2, MARGIN * 3.5-2, MARGIN * -1),
-    # (E_U, 1, MARGIN * -3.5-2, MARGIN * 3), (E_U, 0, MARGIN * 3.5-2, MARGIN * 3),
+    (E_U, 3, MARGIN * -3.5-2, MARGIN * -1), (E_U, 2, MARGIN * 3.5-2, MARGIN * -1),
+    (E_U, 1, MARGIN * -3.5-2, MARGIN * 3), (E_U, 0, MARGIN * 3.5-2, MARGIN * 3),
 
-    # (E_U, 3, MARGIN * -4.5-2, MARGIN * -1), (E_U, 2, MARGIN * 4.5-2, MARGIN * -1),
-    # (E_U, 1, MARGIN * -4.5-2, MARGIN * 3), (E_U, 0, MARGIN * 4.5-2, MARGIN * 3),
+    (E_U, 3, MARGIN * -4.5-2, MARGIN * -1), (E_U, 2, MARGIN * 4.5-2, MARGIN * -1),
+    (E_U, 1, MARGIN * -4.5-2, MARGIN * 3), (E_U, 0, MARGIN * 4.5-2, MARGIN * 3),
 
-    # (E_U, 3, MARGIN * -5.5-2, MARGIN * -1), (E_U, 2, MARGIN * 5.5-2, MARGIN * -1),
-    # (E_U, 1, MARGIN * -5.5-2, MARGIN * 3), (E_U, 0, MARGIN * 5.5-2, MARGIN * 3),
+    (E_U, 3, MARGIN * -5.5-2, MARGIN * -1), (E_U, 2, MARGIN * 5.5-2, MARGIN * -1),
+    (E_U, 1, MARGIN * -5.5-2, MARGIN * 3), (E_U, 0, MARGIN * 5.5-2, MARGIN * 3),
 
-    # (E_U, 3, MARGIN * -3-2, MARGIN * 0), (E_U, 2, MARGIN * 3-2, MARGIN * 0),
-    # (E_U, 1, MARGIN * -2-2, MARGIN * 4), (E_U, 0, MARGIN * 2-2, MARGIN * 4),
+    (E_U, 3, MARGIN * -3-2, MARGIN * 0), (E_U, 2, MARGIN * 3-2, MARGIN * 0),
+    (E_U, 1, MARGIN * -2-2, MARGIN * 4), (E_U, 0, MARGIN * 2-2, MARGIN * 4),
 
-    # (E_U, 3, MARGIN * -4-2, MARGIN * 0), (E_U, 2, MARGIN * 4-2, MARGIN * 0),
-    # (E_U, 1, MARGIN * -3-2, MARGIN * 4), (E_U, 0, MARGIN * 3-2, MARGIN * 4),
+    (E_U, 3, MARGIN * -4-2, MARGIN * 0), (E_U, 2, MARGIN * 4-2, MARGIN * 0),
+    (E_U, 1, MARGIN * -3-2, MARGIN * 4), (E_U, 0, MARGIN * 3-2, MARGIN * 4),
 
-    # (E_U, 3, MARGIN * -5-2, MARGIN * 0), (E_U, 2, MARGIN * 5-2, MARGIN * 0),
-    # (E_U, 1, MARGIN * -4-2, MARGIN * 4), (E_U, 0, MARGIN * 4-2, MARGIN * 4),
+    (E_U, 3, MARGIN * -5-2, MARGIN * 0), (E_U, 2, MARGIN * 5-2, MARGIN * 0),
+    (E_U, 1, MARGIN * -4-2, MARGIN * 4), (E_U, 0, MARGIN * 4-2, MARGIN * 4),
 
-    # (E_U, 3, MARGIN * -6-2, MARGIN * 0), (E_U, 2, MARGIN * 6-2, MARGIN * 0),
-    # (E_U, 1, MARGIN * -5-2, MARGIN * 4), (E_U, 0, MARGIN * 5-2, MARGIN * 4),
+    (E_U, 3, MARGIN * -6-2, MARGIN * 0), (E_U, 2, MARGIN * 6-2, MARGIN * 0),
+    (E_U, 1, MARGIN * -5-2, MARGIN * 4), (E_U, 0, MARGIN * 5-2, MARGIN * 4),
 
-    # (E_U, 3, MARGIN * -3.5-2, MARGIN * 1), (E_U, 2, MARGIN * 3.5-2, MARGIN * 1),
-    # (E_U, 3, MARGIN * -4.5-2, MARGIN * 1), (E_U, 2, MARGIN * 4.5-2, MARGIN * 1),
-    # (E_U, 3, MARGIN * -5.5-2, MARGIN * 1), (E_U, 2, MARGIN * 5.5-2, MARGIN * 1),
-    # (E_U, 3, MARGIN * -6.5-2, MARGIN * 1), (E_U, 2, MARGIN * 6.5-2, MARGIN * 1),
-
-
+    (E_U, 3, MARGIN * -3.5-2, MARGIN * 1), (E_U, 2, MARGIN * 3.5-2, MARGIN * 1),
+    (E_U, 3, MARGIN * -4.5-2, MARGIN * 1), (E_U, 2, MARGIN * 4.5-2, MARGIN * 1),
+    (E_U, 3, MARGIN * -5.5-2, MARGIN * 1), (E_U, 2, MARGIN * 5.5-2, MARGIN * 1),
+    (E_U, 3, MARGIN * -6.5-2, MARGIN * 1), (E_U, 2, MARGIN * 6.5-2, MARGIN * 1),
 
 ]
 

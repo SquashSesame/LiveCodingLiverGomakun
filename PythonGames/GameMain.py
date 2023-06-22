@@ -15,6 +15,7 @@ from Fader import *
 from enemy.EnemyCenter import *
 from scene.TitleScene import *
 from scene.GameScene import *
+from scene.EndingScene import *
         
         
 pygame.init()
@@ -26,6 +27,7 @@ g.SURFACE = pygame.display.set_mode([800, 600])
 g.keymap = []
 g.objects = []
 g.imageList = {}
+g.soundList = {}
 g.player = None
 g.score = None
 g.limitTimer = None
@@ -40,23 +42,30 @@ g.gameStatus = g.GAMESTATUS_GAME
 g.mouse = MouseInfo()
 g.fader = Fader()
 
+g.createTitleScene = lambda : TitleScene()
+g.createGameScene = lambda : GameScene()
+g.createEndingScene = lambda : EndingScene()
 
 # メイン        
 def main():
     
+    # image List
     g.imageList['ships'] = pygame.image.load('img/assets/SpaceShooterAssetPack_Ships.png')
     g.imageList['miscellaneous'] = pygame.image.load('img/assets/SpaceShooterAssetPack_Miscellaneous.png')
-    # g.imageList['enemyUFO'] = pygame.image.load('img/enemy_64x32_ufo.png')
-    # g.imageList['enemy00'] = pygame.image.load('img/enemy00.png')
     g.imageList['eBullet'] = pygame.image.load('img/e_bullet.png')
 
+    # sound List
+    g.soundList['bgm title'] = 'sound/maou_bgm_8bit26.mp3'
+    g.soundList['bgm game'] = 'sound/maou_bgm_8bit08.mp3'
+    
+    pygame.mixer.init()
 
     # calc for deltaTime
     preTime = time.perf_counter()
     
     
     # Current Scene    
-    curScene = TitleScene()
+    curScene = g.createTitleScene()
         
     ###################
     # メインループ

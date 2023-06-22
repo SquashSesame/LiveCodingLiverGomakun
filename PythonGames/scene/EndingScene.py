@@ -9,7 +9,7 @@ import Defines as g
 from scene.Scene import *
 from effect.BackStars import *
 from Fader import *
-from scene.TitleScene import *
+# from scene.TitleScene import *
 
 
 class EndingScene(Scene):    
@@ -24,6 +24,10 @@ class EndingScene(Scene):
         self.status = -1
         # Back Stars
         self.timerStar = random.random() * 0.1
+        # BGM
+        pygame.mixer.music.load(g.soundList['bgm title'])
+        pygame.mixer.music.set_volume(0.5)
+        pygame.mixer.music.play()
         # fade in
         g.fader.fadeIn(0.5, None)
 
@@ -31,7 +35,7 @@ class EndingScene(Scene):
         return self.status
 
     def nextScene(self):
-        return TitleScene()
+        return g.createTitleScene()
 
     def update(self, deltaTime):
         # back star
@@ -47,6 +51,7 @@ class EndingScene(Scene):
         # waiting key
         if K_SPACE in g.keymap or g.mouse.btn_l:
             if not g.fader.is_fading:
+                pygame.mixer.music.fadeout(500)
                 g.fader.fadeOut(0.5, self.cbFadeEnd)
 
     def cbFadeEnd(self):

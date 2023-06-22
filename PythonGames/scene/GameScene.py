@@ -17,8 +17,8 @@ from effect.BackStars import *
 
 # from typing import TYPE_CHECKING
 # if TYPE_CHECKING:
-from scene.TitleScene import *
-from scene.EndingScene import *
+# from scene.TitleScene import *
+# from scene.EndingScene import *
 
 class GameScene(Scene):
     STATE_TITLE = 0
@@ -45,6 +45,10 @@ class GameScene(Scene):
         self.status = -1
         # Back Stars
         self.timerStar = random.random() * 0.1
+        # BGM
+        pygame.mixer.music.load(g.soundList['bgm game'])
+        pygame.mixer.music.set_volume(0.5)
+        pygame.mixer.music.play()
         # fade in
         g.fader.fadeIn(0.5, None)        
         # init stage
@@ -78,9 +82,9 @@ class GameScene(Scene):
 
     def nextScene(self):
         if g.gameStatus == g.GAMESTATUS_GAME:
-            return EndingScene()
+            return g.createEndingScene()
         else:
-            return TitleScene()
+            return g.createTitleScene()
 
     def update(self, deltaTime):
         #============
@@ -123,6 +127,7 @@ class GameScene(Scene):
             if self.titleTimer <= 0:
                 self.titleTimer = 0
                 # fade out
+                pygame.mixer.music.fadeout(500)
                 g.fader.fadeOut(0.5, self.cbFadeEnd)
                 self.state = self.STATE_NEXTSCENE
 
@@ -154,6 +159,7 @@ class GameScene(Scene):
             if K_SPACE in g.keymap:
                 # end of game scene
                 # fade out
+                pygame.mixer.music.fadeout(500)
                 g.fader.fadeOut(0.5, self.cbFadeEnd)
                 
     def cbTimeUp(self):
