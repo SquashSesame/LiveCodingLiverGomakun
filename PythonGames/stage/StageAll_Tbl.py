@@ -9,7 +9,7 @@ from stage.Stage03_Tbl import *
 
 StageAll_Tbl = [
     Stage01_Tbl,
-    # Stage02_Tbl,
-    # Stage03_Tbl,
+    Stage02_Tbl,
+    Stage03_Tbl,
 ]
 
