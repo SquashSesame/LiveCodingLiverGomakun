@@ -69,5 +69,7 @@ class EnemyObject(LifeObject):
             g.score.addScore(self.score)
             # Dead to EnemyCenter
             g.enemyCenter.deadEnemy()
+            # Dead SE
+            g.deadSE.play()
             super().onDead()       
 

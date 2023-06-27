@@ -18,36 +18,17 @@ from scene.GameScene import *
 from scene.EndingScene import *
         
         
-pygame.init()
-pygame.display.set_caption("Live Coding Liver")
-
-# global 変数
-g.SURFACE = pygame.display.set_mode([800, 600])
-
-g.keymap = []
-g.objects = []
-g.imageList = {}
-g.soundList = {}
-g.player = None
-g.score = None
-g.limitTimer = None
-g.enemyCenter = None
-
-g.LIMIT_TIME = 60
-g.GAMESTATUS_GAME = 0
-g.GAMESTATUS_GAMEOVER = 1
-g.GAMESTATUS_GAMECLEAR = 2
-g.gameStatus = g.GAMESTATUS_GAME
-
-g.mouse = MouseInfo()
-g.fader = Fader()
-
-g.createTitleScene = lambda : TitleScene()
-g.createGameScene = lambda : GameScene()
-g.createEndingScene = lambda : EndingScene()
-
 # メイン        
 def main():
+    # global initialize    
+    pygame.init()
+    pygame.display.set_caption("Live Coding Liver")
+    g.SURFACE = pygame.display.set_mode([800, 600])
+
+    g.keymap = []
+    g.objects = []
+    g.imageList = {}
+    g.soundList = {}
     
     # image List
     g.imageList['ships'] = pygame.image.load('img/assets/SpaceShooterAssetPack_Ships.png')
@@ -57,6 +38,35 @@ def main():
     # sound List
     g.soundList['bgm title'] = 'sound/maou_bgm_8bit26.mp3'
     g.soundList['bgm game'] = 'sound/maou_bgm_8bit08.mp3'
+    g.soundList['bgm clear'] = 'sound/maou_bgm_8bit13.mp3'
+    g.soundList['se shot'] = 'sound/maou_se_system43.mp3'
+    g.soundList['se expl'] = 'sound/maou_se_battle_gun05.mp3'
+    g.soundList['jg clear'] = 'sound/maou_game_jingle03.mp3'
+    g.soundList['jg over'] = 'sound/maou_game_jingle07.mp3'
+    
+    # global 変数
+
+    g.player = None
+    g.score = None
+    g.limitTimer = None
+    g.enemyCenter = None
+
+    g.LIMIT_TIME = 60
+    g.GAMESTATUS_GAME = 0
+    g.GAMESTATUS_GAMEOVER = 1
+    g.GAMESTATUS_GAMECLEAR = 2
+    g.gameStatus = g.GAMESTATUS_GAME
+
+    g.mouse = MouseInfo()
+    g.fader = Fader()
+
+    g.createTitleScene = lambda : TitleScene()
+    g.createGameScene = lambda : GameScene()
+    g.createEndingScene = lambda : EndingScene()
+
+    # SE
+    g.deadSE = pygame.mixer.Sound(g.soundList['se expl'])
+    
     
     pygame.mixer.init()
 

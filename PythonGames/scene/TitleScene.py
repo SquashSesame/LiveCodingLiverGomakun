@@ -28,7 +28,7 @@ class TitleScene(Scene):
         # BGM
         pygame.mixer.music.load(g.soundList['bgm title'])
         pygame.mixer.music.set_volume(0.5)
-        pygame.mixer.music.play()
+        pygame.mixer.music.play(-1)
         # fade in
         g.fader.fadeIn(0.5, None)
 

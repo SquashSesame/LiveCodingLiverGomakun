@@ -45,10 +45,6 @@ class GameScene(Scene):
         self.status = -1
         # Back Stars
         self.timerStar = random.random() * 0.1
-        # BGM
-        pygame.mixer.music.load(g.soundList['bgm game'])
-        pygame.mixer.music.set_volume(0.5)
-        pygame.mixer.music.play()
         # fade in
         g.fader.fadeIn(0.5, None)        
         # init stage
@@ -57,6 +53,10 @@ class GameScene(Scene):
         
     # ステージの初期化をする        
     def initStage(self, stageNo):
+        # BGM
+        pygame.mixer.music.load(g.soundList['bgm game'])
+        pygame.mixer.music.set_volume(0.5)
+        pygame.mixer.music.play(-1)
         # Reset State Timer
         g.limitTimer.reset()
         # Game State
@@ -74,8 +74,11 @@ class GameScene(Scene):
         # 敵全滅
         # Stage Clear
         self.state = self.STATE_CLEAR
-        self.titleTimer = 2.0
+        self.titleTimer = 4.0 # 待ち時間
         g.limitTimer.stop()
+        # Jingle
+        pygame.mixer.music.load(g.soundList['jg clear'])
+        pygame.mixer.music.play()
     
     def getSceneStatus(self):
         return self.status
@@ -156,7 +159,7 @@ class GameScene(Scene):
         g.lifeGage.update(deltaTime)
         # ゲームオーバー
         if g.gameStatus == g.GAMESTATUS_GAMEOVER:
-            if K_SPACE in g.keymap:
+            if K_SPACE in g.keymap or g.mouse.btn_l:
                 # end of game scene
                 # fade out
                 pygame.mixer.music.fadeout(500)

@@ -37,6 +37,8 @@ class Player(LifeObject):
         # 自動で弾です
         self.timerAutoShooting = 0
         self.autoShootingTime = 0.2
+        # shot SE
+        self.shootSE = pygame.mixer.Sound(g.soundList['se shot'])
     
     def update(self, deltaTime):
         if self.is_dead:
@@ -88,6 +90,7 @@ class Player(LifeObject):
             if self.timerAutoShooting < 0.0:
                 self.timerAutoShooting = self.autoShootingTime
                 # タマ出す
+                self.shootSE.play()
                 g.objects.append(
                     Bullet(self.px, self.py, 0, -400)
                 )
@@ -146,8 +149,12 @@ class Player(LifeObject):
             )
 
     def onDead(self):
+        # player dead
         self.is_dead = True
         g.objects.append(
             CircleEffect(self.px, self.py)
         )
         g.gameStatus = g.GAMESTATUS_GAMEOVER
+        # Jingle
+        pygame.mixer.music.load(g.soundList['jg over'])
+        pygame.mixer.music.play()
