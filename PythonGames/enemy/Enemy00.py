@@ -10,6 +10,12 @@ from object.EnemyObject import *
 from effect.CircleEffect import *
 
 class Enemy00(EnemyObject):
+
+    STATE_ATK_FOWARD = 3    # 前に出る
+    STATE_ATK_BULLET = 4    # 弾を出す 
+    STATE_ATK_RETURN = 5    # 戻る
+
+    
     def __init__(self, centerObj, ofx, ofy, waitTime, stx, sty):
         # 水平方向にランダムな位置に出現
         super().__init__(
@@ -23,6 +29,8 @@ class Enemy00(EnemyObject):
         self.image = g.imageList['ships']
         self.animList = self.makeAnimList([[5,0]])
         self.rect = self.imgRect = self.animList[0]
+        self.normalTime = 2.0 + random.random() * 5
+        self.stateTimer = self.normalTime
     
     def update(self, deltaTime):
         #===========
@@ -61,3 +69,40 @@ class Enemy00(EnemyObject):
             CircleEffect(self.px, self.py)
         )
 
+    def updateState(self, deltaTime):
+        #===========
+        # State
+        #===========
+        super().updateState(deltaTime)
+
+        if self.state == self.STATE_NORMAL:
+            # 一定時間になったら攻撃モードに移行する
+            self.stateTimer -= deltaTime
+            if self.stateTimer <= 0:
+                # 攻撃開始！
+                self.state = self.STATE_ATK_FOWARD
+                self.aimPy = self.py + 50 + random.random() * 150
+                self.stateTimer = 0
+                self.stateTime = 2.0
+                self.stx = self.px
+                self.sty = self.py
+        elif self.state == self.STATE_ATK_FOWARD:
+            # ランダムな位置まで前進する
+            self.stateTimer += deltaTime
+            rate = self.stateTimer / self.stateTime
+            if rate >= 1.0:
+                # FOWARDは終了して、BULLETへ移行する
+                rate = 1.0
+                self.state = self.STATE_ATK_BULLET
+            self.py = self.interOutQuad( self.sty, self.aimPy, rate)
+        elif self.state == self.STATE_ATK_BULLET:
+            # プレイヤーに向かって弾を出す
+            if random.random() > 0.8:
+                self.shotBulletToPlayer()
+            self.state = self.STATE_ATK_RETURN
+        elif self.state == self.STATE_ATK_RETURN:
+            # 定位置まで移動したらNORMALステートに戻る
+            self.waitTimer = 0
+            self.stx = self.px
+            self.sty = self.py
+            self.state = self.STATE_APPEAR

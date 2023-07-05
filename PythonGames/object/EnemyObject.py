@@ -7,6 +7,7 @@ import math
 from pygame.locals import *
 import Defines as g
 from object.LifeObject import *
+from enemy.EnemyBullet import *
 
 # Enemy 共通基底クラス
 class EnemyObject(LifeObject):
@@ -14,7 +15,6 @@ class EnemyObject(LifeObject):
     STATE_START = 0
     STATE_APPEAR = 1
     STATE_NORMAL = 2
-    STATE_ATTACK = 3
     
     def __init__(self, name, colsize, centerObj, ofx, ofy, waitTime, stx, sty, life, score):
         super().__init__(name, colsize, stx, sty, life)
@@ -32,6 +32,9 @@ class EnemyObject(LifeObject):
         # State
         self.waitTimer = waitTime
         self.state = self.STATE_START
+        # bullet timer
+        self.bulletTimer = 1.0 + random.random() * 5
+        self.bulletSpeed = 200
 
     def updateState(self, deltaTime):
         #===========
@@ -73,3 +76,17 @@ class EnemyObject(LifeObject):
             g.deadSE.play()
             super().onDead()       
 
+    def shotBulletToPlayer(self):
+        # Calc Speed
+        spdx = g.player.px - self.px
+        spdy = g.player.py - self.py
+        length = math.sqrt( spdx * spdx + spdy * spdy)
+        spdx = spdx/length * self.bulletSpeed
+        spdy = spdy/length * self.bulletSpeed
+        # Shot Enemy Bulet
+        g.objects.append(
+            EnemyBullet(
+                self.px, self.py,
+                spdx, spdy
+            )
+        )

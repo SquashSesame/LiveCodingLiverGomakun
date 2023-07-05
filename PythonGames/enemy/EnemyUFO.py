@@ -7,7 +7,6 @@ import math
 from pygame.locals import *
 import Defines as g
 from object.EnemyObject import *
-from enemy.EnemyBullet import *
 from effect.CircleEffect import *
 
 
@@ -25,9 +24,6 @@ class EnemyUFO(EnemyObject):
         self.image = g.imageList['ships']
         self.animList = self.makeAnimList([[9,0]])
         self.rect = self.imgRect = self.animList[0]
-        # bullet timer
-        self.bulletTimer = 1.0 + random.random() * 5
-        self.bulletSpeed = 200
     
     def update(self, deltaTime):
         #===========
@@ -75,17 +71,3 @@ class EnemyUFO(EnemyObject):
             CircleEffect(self.px, self.py)
         )
 
-    def shotBulletToPlayer(self):
-        # Calc Speed
-        spdx = g.player.px - self.px
-        spdy = g.player.py - self.py
-        length = math.sqrt( spdx * spdx + spdy * spdy)
-        spdx = spdx/length * self.bulletSpeed
-        spdy = spdy/length * self.bulletSpeed
-        # Shot Enemy Bulet
-        g.objects.append(
-            EnemyBullet(
-                self.px, self.py,
-                spdx, spdy
-            )
-        )
