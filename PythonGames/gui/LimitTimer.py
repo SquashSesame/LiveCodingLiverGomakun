@@ -46,8 +46,10 @@ class LimitTimer(GObject):
     def draw(self):
         scrRect = g.SURFACE.get_rect()
         
+        time = int(self.limitTimer)
+        mltime = int(self.limitTimer * 100) % 100
         self.textTimeNum = self.textFont.render(
-            str(int(self.limitTimer)), True, (255,255,255))
+            str(time) + ":" + str(mltime), True, (255,255,255))
         
         g.SURFACE.blit(self.textTime,
             ((scrRect.width - self.textTime.get_rect().width) * 0.5 + 200, 8))

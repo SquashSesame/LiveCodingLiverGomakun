@@ -14,6 +14,7 @@ from gui.LimitTimer import *
 from enemy.EnemyCenter import *
 from stage.StageAll_Tbl import *
 from effect.BackStars import *
+from enemy.EnemyBonus import *
 
 # from typing import TYPE_CHECKING
 # if TYPE_CHECKING:
@@ -21,6 +22,9 @@ from effect.BackStars import *
 # from scene.EndingScene import *
 
 class GameScene(Scene):
+    MAX_ENEMYATACK_COUNT = 30
+    TIME_BONUS_ENEMY = 10
+    
     STATE_TITLE = 0
     STATE_GAME = 1
     STATE_CLEAR = 2
@@ -57,6 +61,8 @@ class GameScene(Scene):
         pygame.mixer.music.load(g.soundList['bgm game'])
         pygame.mixer.music.set_volume(0.5)
         pygame.mixer.music.play(-1)
+        # 敵の最大攻撃数
+        g.enemyAtkMaxCounter = 1
         # Reset State Timer
         g.limitTimer.reset()
         # Game State
@@ -69,6 +75,8 @@ class GameScene(Scene):
         # State Title
         self.textSTATETITLE = self.textFont.render(
                 g.enemyCenter.stageTitle, True, (255,0,0))
+        # Bonus 
+        self.bonusTimer = self.TIME_BONUS_ENEMY
                 
     def cbEnemyEmpty(self):
         # 敵全滅
@@ -102,10 +110,22 @@ class GameScene(Scene):
                 g.limitTimer.start()
                 g.enemyCenter.setupEnemy()
                 self.state = self.STATE_GAME
+                
         elif self.state == self.STATE_GAME:
             # game main
+            # 敵の同時攻撃数の増減
+            enemyAtkRate = 1.0 - g.limitTimer.limitTimer / g.limitTimer.resetTime
+            g.enemyAtkMaxCounter = 1 + int(enemyAtkRate * self.MAX_ENEMYATACK_COUNT)
             # enemy cente
             g.enemyCenter.update(deltaTime)
+            # Bonus Timer
+            self.bonusTimer -= deltaTime
+            if self.bonusTimer <= 0:
+                self.bonusTimer = self.TIME_BONUS_ENEMY
+                # Bonus Enemey
+                g.objects.append(
+                    EnemyBonus(810, 100, -100, 0)
+                )            
         elif self.state == self.STATE_CLEAR:
             # stage clear
             self.titleTimer -= deltaTime

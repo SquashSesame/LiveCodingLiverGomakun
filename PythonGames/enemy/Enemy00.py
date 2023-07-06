@@ -63,7 +63,10 @@ class Enemy00(EnemyObject):
         
     
     def onDead(self):
-        #TODO： やられエフェクトを出して死亡
+        # やられエフェクトを出して死亡
+        # もしも攻撃ステートならば敵攻撃数を下げる
+        if self.state >= self.STATE_ATK_FOWARD:
+            g.enemyAtkCounter -= 1            
         super().onDead()
         g.objects.append(
             CircleEffect(self.px, self.py)
@@ -79,13 +82,18 @@ class Enemy00(EnemyObject):
             # 一定時間になったら攻撃モードに移行する
             self.stateTimer -= deltaTime
             if self.stateTimer <= 0:
-                # 攻撃開始！
-                self.state = self.STATE_ATK_FOWARD
-                self.aimPy = self.py + 50 + random.random() * 150
-                self.stateTimer = 0
-                self.stateTime = 2.0
-                self.stx = self.px
-                self.sty = self.py
+                # ステージ内の攻撃数が余裕があればステートを変更する
+                if g.enemyAtkCounter < g.enemyAtkMaxCounter:
+                    g.enemyAtkCounter += 1
+                    # 攻撃開始！
+                    self.state = self.STATE_ATK_FOWARD
+                    self.aimPy = self.py + 50 + random.random() * 150
+                    self.stateTimer = 0
+                    self.stateTime = 2.0
+                    self.stx = self.px
+                    self.sty = self.py
+                else:
+                    self.stateTimer = self.normalTime
         elif self.state == self.STATE_ATK_FOWARD:
             # ランダムな位置まで前進する
             self.stateTimer += deltaTime
@@ -97,11 +105,11 @@ class Enemy00(EnemyObject):
             self.py = self.interOutQuad( self.sty, self.aimPy, rate)
         elif self.state == self.STATE_ATK_BULLET:
             # プレイヤーに向かって弾を出す
-            if random.random() > 0.8:
-                self.shotBulletToPlayer()
+            self.shotBulletToPlayer()
             self.state = self.STATE_ATK_RETURN
         elif self.state == self.STATE_ATK_RETURN:
             # 定位置まで移動したらNORMALステートに戻る
+            g.enemyAtkCounter -= 1
             self.waitTimer = 0
             self.stx = self.px
             self.sty = self.py

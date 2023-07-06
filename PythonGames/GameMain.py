@@ -64,6 +64,10 @@ def main():
     g.createGameScene = lambda : GameScene()
     g.createEndingScene = lambda : EndingScene()
 
+    # ステージバランス
+    g.enemyAtkCounter = 0       # ステージ内で攻撃する敵の数
+    g.enemyAtkMaxCounter = 1    # ステージ内で攻撃する敵の最大数
+
     # SE
     g.deadSE = pygame.mixer.Sound(g.soundList['se expl'])
     

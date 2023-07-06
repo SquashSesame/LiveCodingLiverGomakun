@@ -21,5 +21,5 @@ class LifeObject(GObject):
             self.onDead()
     
     def onDead(self):
-        pass
+        self.is_dead = True
     
